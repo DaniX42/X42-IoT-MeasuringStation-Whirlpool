@@ -21,17 +21,21 @@ This document stores persistent project knowledge.
 - [DECISION] Persist zero-current offsets and refresh them manually with serial command `z` instead of recalibrating on every boot.
 - [TASK] Perform per-channel calibration against a reference meter and update `ampsPerVolt` constants.
 - [TASK] Keep CT clamps empty during boot whenever a fresh zero baseline is required.
-- [ISSUE] Latest validated zero offsets are CH1 `0.203 A`, CH2 `0.198 A`, CH3 `0.137 A`; corrected no-load readings are approximately `0.000 A`.
-- [DECISION] Calibrate CH2 with a 46 W incandescent reference load at 230 V and set `ampsPerVolt` to `0.356`.
-- [DECISION] Cross-calibrate CH1 and CH3 against CH2 while all three clamps are on the same phase.
+- [ISSUE] Latest validated zero offsets are L1 `0.203 A`, L2 `0.198 A`, L3 `0.137 A`; corrected no-load readings are approximately `0.000 A`.
+- [DECISION] Calibrate L2 with a 46 W incandescent reference load at 230 V and set `ampsPerVolt` to `0.356`.
+- [DECISION] Cross-calibrate L1 and L3 against L2 while all three clamps are on the same phase.
 - [TASK] Verify all three channels later against an external reference meter.
-- [ISSUE] CH2 validation under the 46 W lamp is approximately `0.189 A` to `0.193 A`, which is acceptable for the current baseline.
-- [ISSUE] Verified same-phase readings after cross-calibration are CH1 `0.177-0.184 A`, CH2 `0.189-0.192 A`, CH3 `0.184-0.190 A`.
+- [ISSUE] L2 validation under the 46 W lamp is approximately `0.189 A` to `0.193 A`, which is acceptable for the current baseline.
+- [ISSUE] Verified same-phase readings after cross-calibration are L1 `0.177-0.184 A`, L2 `0.189-0.192 A`, L3 `0.184-0.190 A`.
 - [DECISION] Fine-tune all three channels against a 60 W incandescent reference load at 230 V.
-- [ISSUE] Pre-adjustment 60 W readings were CH1 `0.205-0.206 A`, CH2 `0.245-0.249 A`, CH3 `0.236-0.242 A` versus expected `0.261 A`.
-- [ISSUE] Post-adjustment 60 W readings are approximately CH1 `0.261 A`, CH2 `0.260-0.263 A`, CH3 `0.261-0.274 A`; CH3 still shows slight upward drift.
-- [TASK] Latest manual zero refresh saved offsets of CH1 `0.005 A`, CH2 `0.002 A`, CH3 `0.004 A` with all clamps empty.
+- [ISSUE] Pre-adjustment 60 W readings were L1 `0.205-0.206 A`, L2 `0.245-0.249 A`, L3 `0.236-0.242 A` versus expected `0.261 A`.
+- [ISSUE] Post-adjustment 60 W readings are approximately L1 `0.261 A`, L2 `0.260-0.263 A`, L3 `0.261-0.274 A`; L3 still shows slight upward drift.
+- [TASK] Latest manual zero refresh saved offsets of L1 `0.005 A`, L2 `0.002 A`, L3 `0.004 A` with all clamps empty.
 - [ISSUE] Corrected no-load readings after the latest zero refresh are stable at `0.000 A` on all channels.
+- [DECISION] Add DHT11 monitoring on GPIO4 for maintenance shaft temperature and humidity.
+- [TASK] Validate DHT11 values in real shaft conditions and define alert thresholds.
+- [ISSUE] DHT11 is intended for trend-level monitoring, not precision-grade climate measurement.
+- [ISSUE] Runtime verification succeeded: DHT11 initially reports waiting state and then valid samples (for example 29.3 C and 27.0 %RH).
 
 ## Update Rules
 

@@ -5,6 +5,7 @@
 - Define the first functional scope for sensor data acquisition.
 - Finalize ESP-WROOM-32 sensor pin mapping and wiring table.
 - Calibrate all three SCT013 channels against a reference current meter.
+- Validate DHT11 readings in the maintenance shaft and define humidity/temperature alarm thresholds.
 
 ## Medium Priority
 

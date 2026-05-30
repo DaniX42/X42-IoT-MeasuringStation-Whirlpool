@@ -53,27 +53,27 @@ Store zero-current calibration offsets and refresh them only when explicitly req
 - A fresh zero baseline is now taken by sending `z` while clamps are empty.
 - Load calibration using a reference meter remains necessary for accurate absolute current values.
 
-## 2026-05-30 - First Load Calibration on CH2
+## 2026-05-30 - First Load Calibration on L2
 
 ### Context
 One channel was tested with a `46 W` incandescent lamp on a `230 V` phase, corresponding to an expected current of roughly `0.200 A`.
 
 ### Decision
-Adjust `CH2` conversion factor in firmware from `50.0` to `0.356` based on the observed corrected reading of approximately `28.1 A` before calibration.
+Adjust `L2` conversion factor in firmware from `50.0` to `0.356` based on the observed corrected reading of approximately `28.1 A` before calibration.
 
 ### Consequences
-- `CH2` now has a first empirical calibration tied to a known resistive load.
-- Validated CH2 reading is approximately `0.192 A`, which is close to the expected `0.200 A`.
-- `CH1` and `CH3` still require their own load calibration.
+- `L2` now has a first empirical calibration tied to a known resistive load.
+- Validated L2 reading is approximately `0.192 A`, which is close to the expected `0.200 A`.
+- `L1` and `L3` still require their own load calibration.
 - Final accuracy should still be verified with a proper reference meter.
 
-## 2026-05-30 - Cross Calibration of CH1 and CH3
+## 2026-05-30 - Cross Calibration of L1 and L3
 
 ### Context
 All three CT clamps were placed on the same live phase, allowing direct relative comparison between channels.
 
 ### Decision
-Use calibrated `CH2` as the temporary reference and adjust `CH1` and `CH3` conversion factors to match the shared phase current.
+Use calibrated `L2` as the temporary reference and adjust `L1` and `L3` conversion factors to match the shared phase current.
 
 ### Consequences
 - All three channels can now report comparable current on the same conductor.
@@ -94,6 +94,19 @@ Apply a follow-up scale adjustment on all three channels to bring the measured v
 - The calibration remains based on assumed mains voltage and incandescent behavior.
 - A meter-based final verification is still the preferred endpoint.
 - Post-tuning validation with the 60 W lamp landed essentially on the expected `0.261 A`, with minor drift remaining on CH3.
+
+## 2026-05-30 - DHT11 Maintenance Shaft Monitoring
+
+### Context
+The Whirlpool maintenance shaft also requires environmental monitoring to detect high humidity and temperature trends.
+
+### Decision
+Integrate a DHT11 sensor on `GPIO4` with periodic polling and serial reporting for temperature and humidity.
+
+### Consequences
+- Climate data is now available alongside phase current telemetry.
+- Firmware reports waiting/stale states to make sensor quality visible.
+- DHT11 precision is acceptable for trend monitoring but not for high-accuracy instrumentation.
 
 ## 2026-05-30 - Initial Workspace Baseline
 

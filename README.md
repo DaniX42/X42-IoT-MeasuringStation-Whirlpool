@@ -24,6 +24,7 @@ This repository is prepared as a scalable foundation for implementation, experim
 3. Check `docs/decision-log.md` for key decisions
 4. Use `TODO.md` for current priorities
 5. For current sensing hardware, review `docs/sensors-sct013.md`
+6. For maintenance shaft temperature/humidity monitoring, review `docs/sensors-dht11.md`
 
 ## PlatformIO Quick Start
 
@@ -35,6 +36,7 @@ This repository is prepared as a scalable foundation for implementation, experim
 
 The default firmware prints startup telemetry and chip information.
 For three-phase current sensing, the firmware labels channels as `L1`, `L2`, and `L3` on GPIO34, GPIO35, and GPIO32.
+The firmware also reads a DHT11 sensor on GPIO4 for maintenance shaft temperature and humidity.
 
 ## Collaboration
 

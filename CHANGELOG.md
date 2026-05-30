@@ -14,6 +14,8 @@ The format is inspired by Keep a Changelog and follows semantic release-style ca
 - Initial ESP32 firmware skeleton with startup and chip telemetry output.
 - Initial 3-channel SCT013 current sensing firmware on GPIO34/GPIO35/GPIO32.
 - Dedicated wiring and calibration guide in `docs/sensors-sct013.md`.
+- DHT11 maintenance shaft temperature/humidity monitoring in firmware.
+- Dedicated DHT11 wiring and deployment guide in `docs/sensors-dht11.md`.
 
 ### Changed
 - RMS measurement logic now removes DC offset per sample window for more stable baseline readings.
@@ -21,9 +23,7 @@ The format is inspired by Keep a Changelog and follows semantic release-style ca
 - CH2 current conversion factor was empirically calibrated against a 46W incandescent reference load.
 - CH1 and CH3 current conversion factors were cross-calibrated against CH2 on the same phase conductor.
 - All three current conversion factors were fine-tuned against a 60W incandescent reference load.
-
-### Changed
-- N/A
+- Channel labels were renamed from CH1/CH2/CH3 to L1/L2/L3 for three-phase readability.
 
 ### Fixed
 - N/A

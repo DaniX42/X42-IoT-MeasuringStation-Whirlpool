@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <DHT.h>
 #include <Preferences.h>
 #include <esp_system.h>
 #include <math.h>
@@ -8,6 +9,10 @@ constexpr uint32_t kBaudRate = 115200;
 constexpr uint32_t kReportIntervalMs = 2000;
 constexpr uint32_t kSamplingWindowMs = 400;
 constexpr uint32_t kZeroCalibrationWindowMs = 2000;
+constexpr uint32_t kClimateReadIntervalMs = 5000;
+constexpr uint32_t kClimateStaleAfterMs = 30000;
+constexpr uint8_t kDhtPin = 4;
+constexpr uint8_t kDhtType = DHT11;
 constexpr float kAdcReferenceVoltage = 3.3F;
 constexpr uint16_t kAdcMax = 4095;
 constexpr char kPreferencesNamespace[] = "sct013";
@@ -32,7 +37,18 @@ constexpr float kDefaultZeroOffsetVrms[] = {
 
 float gZeroOffsetVrms[sizeof(gChannels) / sizeof(gChannels[0])] = {};
 uint32_t gLastReportMs = 0;
+DHT gDht(kDhtPin, kDhtType);
 Preferences gPreferences;
+
+struct ClimateState {
+  bool hasValidSample;
+  float temperatureC;
+  float humidityPercent;
+  uint32_t lastReadMs;
+  uint32_t lastSuccessMs;
+};
+
+ClimateState gClimate = {false, 0.0F, 0.0F, 0, 0};
 }
 
 void printChipInfo() {
@@ -181,6 +197,43 @@ void handleSerialCommands() {
   }
 }
 
+void updateClimateMeasurement() {
+  const uint32_t now = millis();
+  if (now - gClimate.lastReadMs < kClimateReadIntervalMs) {
+    return;
+  }
+
+  gClimate.lastReadMs = now;
+  const float humidity = gDht.readHumidity();
+  const float temperatureC = gDht.readTemperature();
+
+  if (isnan(humidity) || isnan(temperatureC)) {
+    return;
+  }
+
+  gClimate.hasValidSample = true;
+  gClimate.humidityPercent = humidity;
+  gClimate.temperatureC = temperatureC;
+  gClimate.lastSuccessMs = now;
+}
+
+void printClimateReport() {
+  updateClimateMeasurement();
+
+  const uint32_t now = millis();
+  const bool isFresh = gClimate.hasValidSample && (now - gClimate.lastSuccessMs <= kClimateStaleAfterMs);
+
+  Serial.println("=== Maintenance Shaft Climate ===");
+  if (isFresh) {
+    Serial.printf("DHT11 GPIO%u: temperature=%.1f C, humidity=%.1f %%\n", kDhtPin, gClimate.temperatureC, gClimate.humidityPercent);
+  } else if (gClimate.hasValidSample) {
+    Serial.printf("DHT11 GPIO%u: stale sample age=%lu ms\n", kDhtPin, now - gClimate.lastSuccessMs);
+  } else {
+    Serial.printf("DHT11 GPIO%u: waiting for first valid sample\n", kDhtPin);
+  }
+  Serial.println("=================================");
+}
+
 void printCurrentReport() {
   Serial.println("=== Current Report (A RMS) ===");
 
@@ -203,6 +256,8 @@ void printCurrentReport() {
 
   Serial.printf("free_heap=%u bytes\n", ESP.getFreeHeap());
   Serial.println("==============================");
+
+  printClimateReport();
 }
 
 void setup() {
@@ -216,6 +271,8 @@ void setup() {
 
   printChipInfo();
   Serial.println("Three-phase current channels active: L1=GPIO34, L2=GPIO35, L3=GPIO32");
+  gDht.begin();
+  Serial.println("DHT11 climate sensor active: GPIO4");
   loadDefaultZeroCalibration();
 
   if (loadPersistedZeroCalibration()) {
