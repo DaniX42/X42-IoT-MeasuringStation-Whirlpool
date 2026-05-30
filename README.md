@@ -6,7 +6,27 @@ Current runtime baseline: PlatformIO + ESP32 Arduino framework targeting ESP-WRO
 
 ## Purpose
 
-This repository is prepared as a scalable foundation for implementation, experimentation, and operations around an IoT measuring station.
+This repository implements a Whirlpool-focused IoT measuring station.
+
+At project completion, the station is intended to provide:
+
+- Three-phase electrical consumption monitoring (`L1`, `L2`, `L3`).
+- Water temperature monitoring.
+- Water pH monitoring.
+- Outdoor air temperature and humidity monitoring near the maintenance shaft.
+- Daylight brightness monitoring.
+- A local display showing date, time, pH value, and water temperature.
+
+The system is designed to be integrated into the local network over Wi-Fi and publish measurements through MQTT.
+Additional device functions should be triggerable over MQTT, including calibration workflows for pH, current, and other sensors.
+
+Planned platform-level capabilities include:
+
+- OTA firmware updates.
+- An onboard web server with a dashboard for all measurement values.
+- Password-protected calibration actions after login on the web interface.
+- An HTTP status endpoint exposing key measurements as JSON.
+
 
 ## Project Structure
 
@@ -37,6 +57,13 @@ This repository is prepared as a scalable foundation for implementation, experim
 The default firmware prints startup telemetry and chip information.
 For three-phase current sensing, the firmware labels channels as `L1`, `L2`, and `L3` on GPIO34, GPIO35, and GPIO32.
 The firmware also reads a DHT11 sensor on GPIO4 for maintenance shaft temperature and humidity.
+
+## Current ESP32 Capabilities
+
+- Three-phase current monitoring (`L1`, `L2`, `L3`) with SCT013 sensors.
+- Persisted zero-current calibration with manual refresh command (`z`) via serial monitor.
+- Temperature and humidity monitoring in the maintenance shaft using a DHT11 sensor.
+- Runtime serial telemetry for electrical and climate data.
 
 ## Collaboration
 
