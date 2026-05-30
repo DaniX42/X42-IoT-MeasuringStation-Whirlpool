@@ -36,6 +36,9 @@ This document stores persistent project knowledge.
 - [TASK] Validate DHT11 values in real shaft conditions and define alert thresholds.
 - [ISSUE] DHT11 is intended for trend-level monitoring, not precision-grade climate measurement.
 - [ISSUE] Runtime verification succeeded: DHT11 initially reports waiting state and then valid samples (for example 29.3 C and 27.0 %RH).
+- [DECISION] Implement embedded web UI with password login for configuration of Wi-Fi, MQTT, hostname, sensor topic names, and publish interval.
+- [DECISION] Implement HTTP JSON status endpoint and OTA update flow (web upload + Arduino OTA).
+- [DECISION] Implement MQTT telemetry publishing and MQTT-triggered zero calibration command.
 - [DECISION] The long-term target is a Whirlpool station with 3-phase consumption, water temperature, water pH, outdoor temperature/humidity, and daylight brightness monitoring.
 - [DECISION] The platform target includes Wi-Fi networking, MQTT telemetry and MQTT-triggered calibration workflows for sensors.
 - [DECISION] The platform target also includes OTA updates, a password-protected web dashboard, an HTTP JSON status endpoint, and a local display with date/time, pH, and water temperature.

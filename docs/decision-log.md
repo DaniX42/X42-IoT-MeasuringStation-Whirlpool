@@ -108,6 +108,20 @@ Integrate a DHT11 sensor on `GPIO4` with periodic polling and serial reporting f
 - Firmware reports waiting/stale states to make sensor quality visible.
 - DHT11 precision is acceptable for trend monitoring but not for high-accuracy instrumentation.
 
+## 2026-05-30 - Device Management and Integration Layer
+
+### Context
+The project target requires network integration, remote telemetry, remote calibration flows, OTA updates, and service endpoints.
+
+### Decision
+Implement an onboard HTTP web server with password-protected configuration, MQTT publishing with configurable topics/interval, JSON status endpoint, and OTA update support.
+
+### Consequences
+- Wi-Fi credentials, MQTT settings, hostname, and sensor topic names are now configurable through the web UI.
+- Measurement cadence for telemetry can be tuned in seconds without rebuilding firmware.
+- Remote operation and diagnostics are possible via HTTP JSON and MQTT.
+- Security currently relies on local password authentication and should be hardened further for production deployment.
+
 ## 2026-05-30 - Initial Workspace Baseline
 
 ### Context

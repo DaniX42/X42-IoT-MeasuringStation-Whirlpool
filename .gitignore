@@ -43,3 +43,6 @@ coverage/
 # Temporary files
 *.tmp
 *.swp
+
+# Local firmware build configuration
+src/device_config.h
