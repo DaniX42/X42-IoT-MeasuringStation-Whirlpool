@@ -25,6 +25,86 @@
 #define X42_CFG_HUMIDITY_OFFSET_PCT 0.0F
 #endif
 
+#ifndef X42_GITHUB_RELEASE
+#define X42_GITHUB_RELEASE "dev"
+#endif
+
+#ifndef X42_GIT_BRANCH
+#define X42_GIT_BRANCH "main"
+#endif
+
+#ifndef X42_CFG_HA_ENABLED
+#define X42_CFG_HA_ENABLED 1
+#endif
+
+#ifndef X42_CFG_HA_NAME_L1
+#define X42_CFG_HA_NAME_L1 "L1 Current"
+#endif
+
+#ifndef X42_CFG_HA_NAME_L2
+#define X42_CFG_HA_NAME_L2 "L2 Current"
+#endif
+
+#ifndef X42_CFG_HA_NAME_L3
+#define X42_CFG_HA_NAME_L3 "L3 Current"
+#endif
+
+#ifndef X42_CFG_HA_NAME_TOTAL
+#define X42_CFG_HA_NAME_TOTAL "Total Current"
+#endif
+
+#ifndef X42_CFG_HA_NAME_TEMP
+#define X42_CFG_HA_NAME_TEMP "Temperature"
+#endif
+
+#ifndef X42_CFG_HA_NAME_HUMIDITY
+#define X42_CFG_HA_NAME_HUMIDITY "Humidity"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_TOTAL
+#define X42_CFG_SENSOR_ENERGY_TOTAL "energy_total_kwh"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_TODAY
+#define X42_CFG_SENSOR_ENERGY_TODAY "energy_today_kwh"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_SEASON
+#define X42_CFG_SENSOR_ENERGY_SEASON "energy_season_kwh"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_LAST_SEASON
+#define X42_CFG_SENSOR_ENERGY_LAST_SEASON "energy_last_season_kwh"
+#endif
+
+#ifndef X42_CFG_HA_NAME_ENERGY_TOTAL
+#define X42_CFG_HA_NAME_ENERGY_TOTAL "Total Energy"
+#endif
+
+#ifndef X42_CFG_HA_NAME_ENERGY_TODAY
+#define X42_CFG_HA_NAME_ENERGY_TODAY "Current Today"
+#endif
+
+#ifndef X42_CFG_HA_NAME_ENERGY_SEASON
+#define X42_CFG_HA_NAME_ENERGY_SEASON "Energy This Season"
+#endif
+
+#ifndef X42_CFG_HA_NAME_ENERGY_LAST_SEASON
+#define X42_CFG_HA_NAME_ENERGY_LAST_SEASON "Energy Last Season"
+#endif
+
+#ifndef X42_CFG_GAIN_L1
+#define X42_CFG_GAIN_L1 0.778F
+#endif
+
+#ifndef X42_CFG_GAIN_L2
+#define X42_CFG_GAIN_L2 0.778F
+#endif
+
+#ifndef X42_CFG_GAIN_L3
+#define X42_CFG_GAIN_L3 0.863F
+#endif
+
 namespace {
 constexpr uint32_t kBaudRate = 115200;
 constexpr uint32_t kSamplingWindowMs = 400;
@@ -32,18 +112,26 @@ constexpr uint32_t kZeroCalibrationWindowMs = 2000;
 constexpr uint32_t kClimateReadIntervalMs = 5000;
 constexpr uint32_t kClimateStaleAfterMs = 30000;
 constexpr uint32_t kMqttReconnectIntervalMs = 5000;
+constexpr uint16_t kMqttPayloadBufferSize = 1024;
 constexpr uint32_t kSessionLifetimeMs = 15UL * 60UL * 1000UL;
-constexpr uint32_t kWifiConnectTimeoutMs = 20000;
+constexpr uint32_t kStartupWifiConnectWindowMs = 30000;
+constexpr uint32_t kWifiRetryIntervalMs = 2UL * 60UL * 1000UL;
+constexpr uint32_t kWifiRetryAttemptTimeoutMs = 10000;
 constexpr uint32_t kNtpSyncTimeoutMs = 8000;
+constexpr uint32_t kEnergyPersistIntervalMs = 60000;
+constexpr uint32_t kMaxEnergyDeltaMs = 10UL * 60UL * 1000UL;
 constexpr uint16_t kHttpPort = 80;
 constexpr uint8_t kDhtPin = 4;
 constexpr uint8_t kDhtType = DHT11;
 constexpr float kAdcReferenceVoltage = 3.3F;
+constexpr float kNominalVoltageV = 230.0F;
 constexpr uint16_t kAdcMax = 4095;
 constexpr time_t kValidEpochThreshold = 1700000000;
+constexpr char kHomeAssistantDiscoveryPrefix[] = "homeassistant";
 
 constexpr char kZeroNs[] = "sct013";
 constexpr char kConfigNs[] = "appcfg";
+constexpr char kEnergyNs[] = "energy";
 constexpr char kConfigRevision[] = __DATE__ " " __TIME__;
 constexpr char kPendingOtaKey[] = "pending_ota";
 
@@ -60,15 +148,15 @@ struct CurrentChannel {
 };
 
 CurrentChannel gChannels[] = {
-    {"L1", 34, 0.778F},
-    {"L2", 35, 0.377F},
-    {"L3", 32, 0.863F},
+  {"L1", 34, X42_CFG_GAIN_L1},
+  {"L2", 35, X42_CFG_GAIN_L2},
+  {"L3", 32, X42_CFG_GAIN_L3},
 };
 
 constexpr float kDefaultZeroOffsetVrms[] = {
-    0.005F / 0.778F,
-    0.002F / 0.377F,
-    0.004F / 0.863F,
+  0.005F / X42_CFG_GAIN_L1,
+  0.002F / X42_CFG_GAIN_L2,
+  0.004F / X42_CFG_GAIN_L3,
 };
 
 struct DeviceConfig {
@@ -92,6 +180,24 @@ struct DeviceConfig {
   char sensorL3[24];
   char sensorTemp[24];
   char sensorHumidity[24];
+  char sensorEnergyTotal[24];
+  char sensorEnergyToday[24];
+  char sensorEnergySeason[24];
+  char sensorEnergyLastSeason[24];
+  float gainL1;
+  float gainL2;
+  float gainL3;
+  bool haEnabled;
+  char haNameL1[48];
+  char haNameL2[48];
+  char haNameL3[48];
+  char haNameTotal[48];
+  char haNameTemp[48];
+  char haNameHumidity[48];
+  char haNameEnergyTotal[48];
+  char haNameEnergyToday[48];
+  char haNameEnergySeason[48];
+  char haNameEnergyLastSeason[48];
 };
 
 struct ChannelMeasurement {
@@ -102,6 +208,7 @@ struct ChannelMeasurement {
 
 struct PhaseRuntime {
   float currentA;
+  float powerW;
   float rawCurrentA;
   float zeroOffsetA;
   float meanVoltage;
@@ -118,13 +225,26 @@ struct ClimateState {
 struct RuntimeState {
   PhaseRuntime phases[sizeof(gChannels) / sizeof(gChannels[0])];
   float totalCurrentA;
+  float totalPowerW;
   uint32_t lastReportMs;
+};
+
+struct EnergyState {
+  float totalKWh;
+  float todayKWh;
+  float seasonKWh;
+  float lastSeasonKWh;
+  int32_t localDayKey;
+  uint32_t lastSampleMs;
+  uint32_t lastPersistMs;
+  bool initialized;
 };
 
 float gZeroOffsetVrms[sizeof(gChannels) / sizeof(gChannels[0])] = {};
 DeviceConfig gConfig = {};
 RuntimeState gRuntime = {};
 ClimateState gClimate = {false, 0.0F, 0.0F, 0, 0};
+EnergyState gEnergy = {0.0F, 0.0F, 0.0F, 0.0F, -1, 0, 0, false};
 
 DHT gDht(kDhtPin, kDhtType);
 Preferences gPreferences;
@@ -137,6 +257,9 @@ uint32_t gSessionExpiresMs = 0;
 uint32_t gLastMqttReconnectMs = 0;
 uint32_t gLastMqttPublishMs = 0;
 bool gIsApMode = false;
+uint32_t gLastWifiRetryAttemptMs = 0;
+bool gWifiRetryInProgress = false;
+uint32_t gWifiRetryStartedMs = 0;
 String gLastTimeSyncSource;
 time_t gLastTimeSyncEpoch = 0;
 }
@@ -150,6 +273,23 @@ void copyString(char* dst, size_t dstSize, const String& value) {
   const size_t length = value.length() < maxCopy ? value.length() : maxCopy;
   memcpy(dst, value.c_str(), length);
   dst[length] = '\0';
+}
+
+float sanitizeGain(float value, float fallback) {
+  if (!isfinite(value) || value < 0.05F || value > 5.0F) {
+    return fallback;
+  }
+  return value;
+}
+
+void applyConfiguredCurrentGains() {
+  gConfig.gainL1 = sanitizeGain(gConfig.gainL1, X42_CFG_GAIN_L1);
+  gConfig.gainL2 = sanitizeGain(gConfig.gainL2, X42_CFG_GAIN_L2);
+  gConfig.gainL3 = sanitizeGain(gConfig.gainL3, X42_CFG_GAIN_L3);
+
+  gChannels[0].ampsPerVolt = gConfig.gainL1;
+  gChannels[1].ampsPerVolt = gConfig.gainL2;
+  gChannels[2].ampsPerVolt = gConfig.gainL3;
 }
 
 void setDefaults(DeviceConfig& cfg) {
@@ -173,6 +313,24 @@ void setDefaults(DeviceConfig& cfg) {
   copyString(cfg.sensorL3, sizeof(cfg.sensorL3), X42_CFG_SENSOR_L3);
   copyString(cfg.sensorTemp, sizeof(cfg.sensorTemp), X42_CFG_SENSOR_TEMP);
   copyString(cfg.sensorHumidity, sizeof(cfg.sensorHumidity), X42_CFG_SENSOR_HUMIDITY);
+  copyString(cfg.sensorEnergyTotal, sizeof(cfg.sensorEnergyTotal), X42_CFG_SENSOR_ENERGY_TOTAL);
+  copyString(cfg.sensorEnergyToday, sizeof(cfg.sensorEnergyToday), X42_CFG_SENSOR_ENERGY_TODAY);
+  copyString(cfg.sensorEnergySeason, sizeof(cfg.sensorEnergySeason), X42_CFG_SENSOR_ENERGY_SEASON);
+  copyString(cfg.sensorEnergyLastSeason, sizeof(cfg.sensorEnergyLastSeason), X42_CFG_SENSOR_ENERGY_LAST_SEASON);
+  cfg.gainL1 = X42_CFG_GAIN_L1;
+  cfg.gainL2 = X42_CFG_GAIN_L2;
+  cfg.gainL3 = X42_CFG_GAIN_L3;
+  cfg.haEnabled = X42_CFG_HA_ENABLED != 0;
+  copyString(cfg.haNameL1, sizeof(cfg.haNameL1), X42_CFG_HA_NAME_L1);
+  copyString(cfg.haNameL2, sizeof(cfg.haNameL2), X42_CFG_HA_NAME_L2);
+  copyString(cfg.haNameL3, sizeof(cfg.haNameL3), X42_CFG_HA_NAME_L3);
+  copyString(cfg.haNameTotal, sizeof(cfg.haNameTotal), X42_CFG_HA_NAME_TOTAL);
+  copyString(cfg.haNameTemp, sizeof(cfg.haNameTemp), X42_CFG_HA_NAME_TEMP);
+  copyString(cfg.haNameHumidity, sizeof(cfg.haNameHumidity), X42_CFG_HA_NAME_HUMIDITY);
+  copyString(cfg.haNameEnergyTotal, sizeof(cfg.haNameEnergyTotal), X42_CFG_HA_NAME_ENERGY_TOTAL);
+  copyString(cfg.haNameEnergyToday, sizeof(cfg.haNameEnergyToday), X42_CFG_HA_NAME_ENERGY_TODAY);
+  copyString(cfg.haNameEnergySeason, sizeof(cfg.haNameEnergySeason), X42_CFG_HA_NAME_ENERGY_SEASON);
+  copyString(cfg.haNameEnergyLastSeason, sizeof(cfg.haNameEnergyLastSeason), X42_CFG_HA_NAME_ENERGY_LAST_SEASON);
 }
 
 bool consumePendingOtaUpdateFlag() {
@@ -230,6 +388,24 @@ ConfigBootAction loadConfig(bool pendingOtaUpdate) {
   gPreferences.getString("name_l3", gConfig.sensorL3, sizeof(gConfig.sensorL3));
   gPreferences.getString("name_t", gConfig.sensorTemp, sizeof(gConfig.sensorTemp));
   gPreferences.getString("name_h", gConfig.sensorHumidity, sizeof(gConfig.sensorHumidity));
+  gPreferences.getString("name_e_tot", gConfig.sensorEnergyTotal, sizeof(gConfig.sensorEnergyTotal));
+  gPreferences.getString("name_e_day", gConfig.sensorEnergyToday, sizeof(gConfig.sensorEnergyToday));
+  gPreferences.getString("name_e_sea", gConfig.sensorEnergySeason, sizeof(gConfig.sensorEnergySeason));
+  gPreferences.getString("name_e_lst", gConfig.sensorEnergyLastSeason, sizeof(gConfig.sensorEnergyLastSeason));
+  gConfig.gainL1 = gPreferences.getFloat("gain_l1", gConfig.gainL1);
+  gConfig.gainL2 = gPreferences.getFloat("gain_l2", gConfig.gainL2);
+  gConfig.gainL3 = gPreferences.getFloat("gain_l3", gConfig.gainL3);
+  gConfig.haEnabled = gPreferences.getBool("ha_en", gConfig.haEnabled);
+  gPreferences.getString("ha_l1", gConfig.haNameL1, sizeof(gConfig.haNameL1));
+  gPreferences.getString("ha_l2", gConfig.haNameL2, sizeof(gConfig.haNameL2));
+  gPreferences.getString("ha_l3", gConfig.haNameL3, sizeof(gConfig.haNameL3));
+  gPreferences.getString("ha_tot", gConfig.haNameTotal, sizeof(gConfig.haNameTotal));
+  gPreferences.getString("ha_tmp", gConfig.haNameTemp, sizeof(gConfig.haNameTemp));
+  gPreferences.getString("ha_hum", gConfig.haNameHumidity, sizeof(gConfig.haNameHumidity));
+  gPreferences.getString("ha_e_tot", gConfig.haNameEnergyTotal, sizeof(gConfig.haNameEnergyTotal));
+  gPreferences.getString("ha_e_day", gConfig.haNameEnergyToday, sizeof(gConfig.haNameEnergyToday));
+  gPreferences.getString("ha_e_sea", gConfig.haNameEnergySeason, sizeof(gConfig.haNameEnergySeason));
+  gPreferences.getString("ha_e_lst", gConfig.haNameEnergyLastSeason, sizeof(gConfig.haNameEnergyLastSeason));
 
   gPreferences.end();
 
@@ -257,6 +433,8 @@ ConfigBootAction loadConfig(bool pendingOtaUpdate) {
   if (gConfig.humidityOffsetPct > 50.0F) {
     gConfig.humidityOffsetPct = 50.0F;
   }
+
+  applyConfiguredCurrentGains();
 
   if (!revisionMatches) {
     return ConfigBootAction::PersistLoaded;
@@ -291,12 +469,138 @@ void saveConfig() {
   gPreferences.putString("name_l3", gConfig.sensorL3);
   gPreferences.putString("name_t", gConfig.sensorTemp);
   gPreferences.putString("name_h", gConfig.sensorHumidity);
+  gPreferences.putString("name_e_tot", gConfig.sensorEnergyTotal);
+  gPreferences.putString("name_e_day", gConfig.sensorEnergyToday);
+  gPreferences.putString("name_e_sea", gConfig.sensorEnergySeason);
+  gPreferences.putString("name_e_lst", gConfig.sensorEnergyLastSeason);
+  gPreferences.putFloat("gain_l1", gConfig.gainL1);
+  gPreferences.putFloat("gain_l2", gConfig.gainL2);
+  gPreferences.putFloat("gain_l3", gConfig.gainL3);
+  gPreferences.putBool("ha_en", gConfig.haEnabled);
+  gPreferences.putString("ha_l1", gConfig.haNameL1);
+  gPreferences.putString("ha_l2", gConfig.haNameL2);
+  gPreferences.putString("ha_l3", gConfig.haNameL3);
+  gPreferences.putString("ha_tot", gConfig.haNameTotal);
+  gPreferences.putString("ha_tmp", gConfig.haNameTemp);
+  gPreferences.putString("ha_hum", gConfig.haNameHumidity);
+  gPreferences.putString("ha_e_tot", gConfig.haNameEnergyTotal);
+  gPreferences.putString("ha_e_day", gConfig.haNameEnergyToday);
+  gPreferences.putString("ha_e_sea", gConfig.haNameEnergySeason);
+  gPreferences.putString("ha_e_lst", gConfig.haNameEnergyLastSeason);
 
   gPreferences.end();
 }
 
 bool hasValidSystemTime() {
   return time(nullptr) >= kValidEpochThreshold;
+}
+
+int32_t localDayKeyFromEpoch(time_t epoch) {
+  if (epoch <= 0) {
+    return -1;
+  }
+
+  struct tm tmLocal;
+  localtime_r(&epoch, &tmLocal);
+  return (tmLocal.tm_year + 1900) * 10000 + (tmLocal.tm_mon + 1) * 100 + tmLocal.tm_mday;
+}
+
+void saveEnergyState() {
+  if (!gPreferences.begin(kEnergyNs, false)) {
+    return;
+  }
+
+  gPreferences.putFloat("total", gEnergy.totalKWh);
+  gPreferences.putFloat("today", gEnergy.todayKWh);
+  gPreferences.putFloat("season", gEnergy.seasonKWh);
+  gPreferences.putFloat("last_season", gEnergy.lastSeasonKWh);
+  gPreferences.putInt("day_key", gEnergy.localDayKey);
+  gPreferences.end();
+  gEnergy.lastPersistMs = millis();
+}
+
+void loadEnergyState() {
+  gEnergy = {0.0F, 0.0F, 0.0F, 0.0F, -1, 0, 0, false};
+  if (!gPreferences.begin(kEnergyNs, true)) {
+    return;
+  }
+
+  gEnergy.totalKWh = gPreferences.getFloat("total", 0.0F);
+  gEnergy.todayKWh = gPreferences.getFloat("today", 0.0F);
+  gEnergy.seasonKWh = gPreferences.getFloat("season", 0.0F);
+  gEnergy.lastSeasonKWh = gPreferences.getFloat("last_season", 0.0F);
+  gEnergy.localDayKey = gPreferences.getInt("day_key", -1);
+  gPreferences.end();
+}
+
+void updateEnergyDayBoundary() {
+  if (!hasValidSystemTime()) {
+    return;
+  }
+
+  const int32_t dayKey = localDayKeyFromEpoch(time(nullptr));
+  if (dayKey < 0) {
+    return;
+  }
+
+  if (gEnergy.localDayKey < 0) {
+    gEnergy.localDayKey = dayKey;
+    return;
+  }
+
+  if (dayKey != gEnergy.localDayKey) {
+    gEnergy.todayKWh = 0.0F;
+    gEnergy.localDayKey = dayKey;
+    saveEnergyState();
+  }
+}
+
+void integrateEnergy(float totalPowerW) {
+  const uint32_t now = millis();
+  if (!gEnergy.initialized) {
+    gEnergy.initialized = true;
+    gEnergy.lastSampleMs = now;
+    updateEnergyDayBoundary();
+    return;
+  }
+
+  uint32_t deltaMs = now - gEnergy.lastSampleMs;
+  gEnergy.lastSampleMs = now;
+  updateEnergyDayBoundary();
+
+  if (deltaMs == 0) {
+    return;
+  }
+  if (deltaMs > kMaxEnergyDeltaMs) {
+    deltaMs = kMaxEnergyDeltaMs;
+  }
+
+  const float powerW = totalPowerW > 0.0F ? totalPowerW : 0.0F;
+  if (powerW <= 0.0F) {
+    if (now - gEnergy.lastPersistMs >= kEnergyPersistIntervalMs) {
+      saveEnergyState();
+    }
+    return;
+  }
+
+  const float deltaKWh = (powerW * (static_cast<float>(deltaMs) / 3600000.0F)) / 1000.0F;
+  if (deltaKWh <= 0.0F) {
+    return;
+  }
+
+  gEnergy.totalKWh += deltaKWh;
+  gEnergy.todayKWh += deltaKWh;
+  gEnergy.seasonKWh += deltaKWh;
+
+  if (now - gEnergy.lastPersistMs >= kEnergyPersistIntervalMs) {
+    saveEnergyState();
+  }
+}
+
+void resetSeasonEnergy() {
+  gEnergy.lastSeasonKWh = gEnergy.seasonKWh;
+  gEnergy.seasonKWh = 0.0F;
+  saveEnergyState();
 }
 
 String epochToUtcIso(time_t epoch) {
@@ -490,13 +794,17 @@ bool climateSampleIsFresh() {
 
 void updateMeasurements() {
   gRuntime.totalCurrentA = 0.0F;
+  gRuntime.totalPowerW = 0.0F;
   for (size_t index = 0; index < (sizeof(gChannels) / sizeof(gChannels[0])); ++index) {
     const ChannelMeasurement measurement = readChannelMeasurement(gChannels[index], kSamplingWindowMs);
     const float zeroOffsetA = gZeroOffsetVrms[index] * gChannels[index].ampsPerVolt;
     const float correctedA = measurement.irms > zeroOffsetA ? measurement.irms - zeroOffsetA : 0.0F;
-    gRuntime.phases[index] = {correctedA, measurement.irms, zeroOffsetA, measurement.meanVoltage};
+    const float estimatedPowerW = correctedA * kNominalVoltageV;
+    gRuntime.phases[index] = {correctedA, estimatedPowerW, measurement.irms, zeroOffsetA, measurement.meanVoltage};
     gRuntime.totalCurrentA += correctedA;
+    gRuntime.totalPowerW += estimatedPowerW;
   }
+  integrateEnergy(gRuntime.totalPowerW);
   updateClimateMeasurement();
 }
 
@@ -511,6 +819,163 @@ String topicFor(const char* sensorName) {
   }
   topic += sensorName;
   return topic;
+}
+
+String availabilityTopic() {
+  return topicFor("availability");
+}
+
+String jsonEscape(const String& value) {
+  String out;
+  out.reserve(value.length() + 8);
+  for (size_t i = 0; i < value.length(); ++i) {
+    const char c = value.charAt(i);
+    if (c == '\\') {
+      out += "\\\\";
+    } else if (c == '"') {
+      out += "\\\"";
+    } else if (c == '\n') {
+      out += "\\n";
+    } else if (c == '\r') {
+      out += "\\r";
+    } else if (c == '\t') {
+      out += "\\t";
+    } else {
+      out += c;
+    }
+  }
+  return out;
+}
+
+String mqttToken(const String& value) {
+  String out;
+  out.reserve(value.length());
+  for (size_t i = 0; i < value.length(); ++i) {
+    char c = static_cast<char>(tolower(value.charAt(i)));
+    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+      out += c;
+    } else {
+      out += '_';
+    }
+  }
+  while (out.indexOf("__") >= 0) {
+    out.replace("__", "_");
+  }
+  if (out.startsWith("_")) {
+    out.remove(0, 1);
+  }
+  if (out.endsWith("_")) {
+    out.remove(out.length() - 1);
+  }
+  if (out.length() == 0) {
+    out = "x42";
+  }
+  return out;
+}
+
+String discoveryDeviceId() {
+  String id = "x42ms_";
+  id += mqttToken(gConfig.hostname);
+  id += "_";
+  id += String(static_cast<uint32_t>(ESP.getEfuseMac()), HEX);
+  return id;
+}
+
+String discoveryTopicForObject(const String& objectId) {
+  return String(kHomeAssistantDiscoveryPrefix) + "/sensor/" + discoveryDeviceId() + "/" + objectId + "/config";
+}
+
+String discoveryDeviceJson() {
+  const String deviceName = "X42MeasuringStation :: " + String(gConfig.hostname);
+  String model = "Measuringstation (v." + String(X42_GITHUB_RELEASE);
+  const String branch = String(X42_GIT_BRANCH);
+  if (branch.length() > 0 && branch != "main") {
+    model += "-" + branch;
+  }
+  model += ")";
+
+  String json = "\"device\":{";
+  json += "\"identifiers\":[\"" + jsonEscape(discoveryDeviceId()) + "\"],";
+  json += "\"name\":\"" + jsonEscape(deviceName) + "\",";
+  json += "\"manufacturer\":\"X42.icu\",";
+  json += "\"model\":\"" + jsonEscape(model) + "\"";
+  json += "}";
+  return json;
+}
+
+void publishHomeAssistantDiscovery(
+    const String& objectId,
+    const String& name,
+    const String& stateTopic,
+    const char* unit,
+    const char* deviceClass,
+    const char* stateClass) {
+  String payload = "{";
+  payload += "\"name\":\"" + jsonEscape(name) + "\",";
+  payload += "\"unique_id\":\"" + jsonEscape(discoveryDeviceId() + "_" + objectId) + "\",";
+  payload += "\"state_topic\":\"" + jsonEscape(stateTopic) + "\",";
+  payload += "\"availability_topic\":\"" + jsonEscape(availabilityTopic()) + "\",";
+  payload += "\"payload_available\":\"online\",";
+  payload += "\"payload_not_available\":\"offline\",";
+  if (unit != nullptr && strlen(unit) > 0) {
+    payload += "\"unit_of_measurement\":\"" + jsonEscape(String(unit)) + "\",";
+  }
+  if (deviceClass != nullptr && strlen(deviceClass) > 0) {
+    payload += "\"device_class\":\"" + jsonEscape(String(deviceClass)) + "\",";
+  }
+  if (stateClass != nullptr && strlen(stateClass) > 0) {
+    payload += "\"state_class\":\"" + jsonEscape(String(stateClass)) + "\",";
+  }
+  payload += discoveryDeviceJson();
+  payload += "}";
+
+  const String discoveryTopic = discoveryTopicForObject(objectId);
+  const bool ok = gMqtt.publish(discoveryTopic.c_str(), payload.c_str(), true);
+  if (!ok) {
+    Serial.printf(
+        "Home Assistant discovery publish failed: topic=%s payload_len=%u\n",
+        discoveryTopic.c_str(),
+        static_cast<unsigned>(payload.length()));
+  }
+}
+
+void publishHomeAssistantAutoDiscovery() {
+  const String objectIds[] = {
+      "current_l1",
+      "current_l2",
+      "current_l3",
+      "current_total",
+      "power_l1",
+      "power_l2",
+      "power_l3",
+      "power_total",
+  "energy_total",
+  "energy_today",
+  "energy_season",
+  "energy_last_season",
+      "temperature",
+      "humidity"};
+  if (!gConfig.haEnabled) {
+    for (size_t i = 0; i < (sizeof(objectIds) / sizeof(objectIds[0])); ++i) {
+      gMqtt.publish(discoveryTopicForObject(objectIds[i]).c_str(), "", true);
+    }
+    return;
+  }
+
+  publishHomeAssistantDiscovery("current_l1", gConfig.haNameL1, topicFor(gConfig.sensorL1), "A", "current", "measurement");
+  publishHomeAssistantDiscovery("current_l2", gConfig.haNameL2, topicFor(gConfig.sensorL2), "A", "current", "measurement");
+  publishHomeAssistantDiscovery("current_l3", gConfig.haNameL3, topicFor(gConfig.sensorL3), "A", "current", "measurement");
+  publishHomeAssistantDiscovery("current_total", gConfig.haNameTotal, topicFor("total_current"), "A", "current", "measurement");
+  publishHomeAssistantDiscovery("power_l1", "L1 Power", topicFor("power_l1"), "W", "power", "measurement");
+  publishHomeAssistantDiscovery("power_l2", "L2 Power", topicFor("power_l2"), "W", "power", "measurement");
+  publishHomeAssistantDiscovery("power_l3", "L3 Power", topicFor("power_l3"), "W", "power", "measurement");
+  publishHomeAssistantDiscovery("power_total", "Total Power", topicFor("total_power"), "W", "power", "measurement");
+  publishHomeAssistantDiscovery("energy_total", gConfig.haNameEnergyTotal, topicFor(gConfig.sensorEnergyTotal), "kWh", "energy", "total_increasing");
+  publishHomeAssistantDiscovery("energy_today", gConfig.haNameEnergyToday, topicFor(gConfig.sensorEnergyToday), "kWh", "energy", "total");
+  publishHomeAssistantDiscovery("energy_season", gConfig.haNameEnergySeason, topicFor(gConfig.sensorEnergySeason), "kWh", "energy", "total");
+  publishHomeAssistantDiscovery("energy_last_season", gConfig.haNameEnergyLastSeason, topicFor(gConfig.sensorEnergyLastSeason), "kWh", "energy", "total");
+  publishHomeAssistantDiscovery("temperature", gConfig.haNameTemp, topicFor(gConfig.sensorTemp), "C", "temperature", "measurement");
+  publishHomeAssistantDiscovery("humidity", gConfig.haNameHumidity, topicFor(gConfig.sensorHumidity), "%", "humidity", "measurement");
 }
 
 void publishFloat(const String& topic, float value, uint8_t precision) {
@@ -528,6 +993,14 @@ void publishMqttMeasurements() {
   publishFloat(topicFor(gConfig.sensorL2), gRuntime.phases[1].currentA, 3);
   publishFloat(topicFor(gConfig.sensorL3), gRuntime.phases[2].currentA, 3);
   publishFloat(topicFor("total_current"), gRuntime.totalCurrentA, 3);
+  publishFloat(topicFor("power_l1"), gRuntime.phases[0].powerW, 1);
+  publishFloat(topicFor("power_l2"), gRuntime.phases[1].powerW, 1);
+  publishFloat(topicFor("power_l3"), gRuntime.phases[2].powerW, 1);
+  publishFloat(topicFor("total_power"), gRuntime.totalPowerW, 1);
+  publishFloat(topicFor(gConfig.sensorEnergyTotal), gEnergy.totalKWh, 3);
+  publishFloat(topicFor(gConfig.sensorEnergyToday), gEnergy.todayKWh, 3);
+  publishFloat(topicFor(gConfig.sensorEnergySeason), gEnergy.seasonKWh, 3);
+  publishFloat(topicFor(gConfig.sensorEnergyLastSeason), gEnergy.lastSeasonKWh, 3);
 
   if (climateSampleIsFresh()) {
     publishFloat(topicFor(gConfig.sensorTemp), gClimate.temperatureC, 1);
@@ -574,6 +1047,9 @@ void mqttCallback(char* topic, uint8_t* payload, unsigned int length) {
 void configureMqttClient() {
   gMqtt.setServer(gConfig.mqttServer, gConfig.mqttPort);
   gMqtt.setCallback(mqttCallback);
+  if (!gMqtt.setBufferSize(kMqttPayloadBufferSize)) {
+    Serial.printf("Failed to set MQTT buffer size to %u bytes\n", static_cast<unsigned>(kMqttPayloadBufferSize));
+  }
 }
 
 String mqttClientId() {
@@ -604,16 +1080,32 @@ void maintainMqttConnection() {
   gLastMqttReconnectMs = now;
 
   bool connected = false;
+  const String lwtTopic = availabilityTopic();
   if (strlen(gConfig.mqttUser) > 0) {
-    connected = gMqtt.connect(mqttClientId().c_str(), gConfig.mqttUser, gConfig.mqttPassword);
+    connected = gMqtt.connect(
+        mqttClientId().c_str(),
+        gConfig.mqttUser,
+        gConfig.mqttPassword,
+        lwtTopic.c_str(),
+        0,
+        true,
+        "offline");
   } else {
-    connected = gMqtt.connect(mqttClientId().c_str());
+    connected = gMqtt.connect(
+        mqttClientId().c_str(),
+        lwtTopic.c_str(),
+        0,
+        true,
+        "offline");
   }
 
   if (connected) {
+    gMqtt.publish(lwtTopic.c_str(), "online", true);
     gMqtt.subscribe(topicFor("cmd").c_str());
     gMqtt.subscribe(topicFor("cmd/zero").c_str());
     gMqtt.subscribe(topicFor("cmd/time").c_str());
+    publishHomeAssistantAutoDiscovery();
+    publishMqttMeasurements();
   }
 }
 
@@ -692,7 +1184,7 @@ void requireAuthOrReject() {
   }
 }
 
-String dashboardHtml(bool authenticated) {
+String dashboardHtml(bool authenticated, const String& savedScope, bool rebootRequired, bool gainRecalibrationRecommended) {
   String html;
   html.reserve(14000);
   html += "<html><head><meta charset='utf-8'/>";
@@ -728,19 +1220,43 @@ String dashboardHtml(bool authenticated) {
   html += "</header>";
 
   html += "<section><h2>Live Values</h2><div class='x42-grid'>";
-  html += "<article class='x42-card'><h3>L1 Current</h3><div class='x42-value'>" + String(gRuntime.phases[0].currentA, 3) + " A</div></article>";
-  html += "<article class='x42-card'><h3>L2 Current</h3><div class='x42-value'>" + String(gRuntime.phases[1].currentA, 3) + " A</div></article>";
-  html += "<article class='x42-card'><h3>L3 Current</h3><div class='x42-value'>" + String(gRuntime.phases[2].currentA, 3) + " A</div></article>";
-  html += "<article class='x42-card'><h3>Total Current</h3><div class='x42-value'>" + String(gRuntime.totalCurrentA, 3) + " A</div></article>";
+  html += "<article class='x42-card'><h3>L1 Current</h3><div class='x42-value' id='val-l1-current'>" + String(gRuntime.phases[0].currentA, 3) + " A</div></article>";
+  html += "<article class='x42-card'><h3>L2 Current</h3><div class='x42-value' id='val-l2-current'>" + String(gRuntime.phases[1].currentA, 3) + " A</div></article>";
+  html += "<article class='x42-card'><h3>L3 Current</h3><div class='x42-value' id='val-l3-current'>" + String(gRuntime.phases[2].currentA, 3) + " A</div></article>";
+  html += "<article class='x42-card'><h3>Total Current</h3><div class='x42-value' id='val-total-current'>" + String(gRuntime.totalCurrentA, 3) + " A</div></article>";
+  html += "<article class='x42-card'><h3>L1 Power</h3><div class='x42-value' id='val-l1-power'>" + String(gRuntime.phases[0].powerW, 1) + " W</div></article>";
+  html += "<article class='x42-card'><h3>L2 Power</h3><div class='x42-value' id='val-l2-power'>" + String(gRuntime.phases[1].powerW, 1) + " W</div></article>";
+  html += "<article class='x42-card'><h3>L3 Power</h3><div class='x42-value' id='val-l3-power'>" + String(gRuntime.phases[2].powerW, 1) + " W</div></article>";
+  html += "<article class='x42-card'><h3>Total Power</h3><div class='x42-value' id='val-total-power'>" + String(gRuntime.totalPowerW, 1) + " W</div></article>";
+  html += "<article class='x42-card'><h3>Total Energy</h3><div class='x42-value' id='val-energy-total'>" + String(gEnergy.totalKWh, 3) + " kWh</div></article>";
+  html += "<article class='x42-card'><h3>Current Today</h3><div class='x42-value' id='val-energy-today'>" + String(gEnergy.todayKWh, 3) + " kWh</div></article>";
   if (climateSampleIsFresh()) {
-    html += "<article class='x42-card'><h3>Temperature</h3><div class='x42-value'>" + String(gClimate.temperatureC, 1) + " C</div></article>";
-    html += "<article class='x42-card'><h3>Humidity</h3><div class='x42-value'>" + String(gClimate.humidityPercent, 1) + " %</div></article>";
+    html += "<article class='x42-card'><h3>Temperature</h3><div class='x42-value' id='val-temp'>" + String(gClimate.temperatureC, 1) + " C</div></article>";
+    html += "<article class='x42-card'><h3>Humidity</h3><div class='x42-value' id='val-humidity'>" + String(gClimate.humidityPercent, 1) + " %</div></article>";
   } else {
-    html += "<article class='x42-card'><h3>Climate</h3><div class='x42-value'>waiting/stale</div></article>";
+    html += "<article class='x42-card'><h3>Temperature</h3><div class='x42-value' id='val-temp'>waiting/stale</div></article>";
+    html += "<article class='x42-card'><h3>Humidity</h3><div class='x42-value' id='val-humidity'>waiting/stale</div></article>";
   }
   html += "</div></section>";
 
-  html += "<section><h2>Access</h2>";
+  html += "<section><h2>Season Counter</h2><article class='x42-card'>";
+  html += "<div class='x42-grid'>";
+  html += "<div><h3>Energy This Season</h3><div class='x42-value' id='val-energy-season'>" + String(gEnergy.seasonKWh, 3) + " kWh</div></div>";
+  html += "<div><h3>Energy Last Season</h3><div class='x42-value' id='val-energy-last-season'>" + String(gEnergy.lastSeasonKWh, 3) + " kWh</div></div>";
+  html += "</div>";
+  if (authenticated) {
+    if (savedScope == "energy") {
+      html += "<p><small style='color:var(--pico-color-green-500);'>season reset done</small></p>";
+    }
+    html += "<form method='post' action='/energy-season-reset'>";
+    html += "<label>Type YES to confirm moving <strong>Energy This Season</strong> to <strong>Energy Last Season</strong> and resetting <strong>Energy This Season</strong> to 0.";
+    html += "<input name='confirm' placeholder='YES'/></label>";
+    html += "<button type='submit' class='secondary'>Reset Energy This Season (with rollover)</button></form>";
+  } else {
+    html += "<p class='x42-muted'>Login is required to reset season counters.</p>";
+  }
+  html += "</article></section>";
+
   if (!authenticated) {
     html += "<article><form method='post' action='/login'>";
     html += "<div class='grid'><label>User<input name='username' autocomplete='username'/></label>";
@@ -751,10 +1267,9 @@ String dashboardHtml(bool authenticated) {
     html += "</main></body></html>";
     return html;
   }
-  html += "<article><p>Admin session is active. Advanced settings and actions are available below.</p>";
-  html += "</article></section>";
 
-  html += "<section><h2>Configuration</h2><article><form method='post' action='/save-config'>";
+  html += "<form method='post' action='/save-config'>";
+  html += "<section><h2>Configuration</h2><article>";
   html += "<h3>WLAN</h3>";
   html += "<div class='grid'><label>WiFi SSID<input name='wifi_ssid' value='" + htmlEscape(gConfig.wifiSsid) + "'/></label>";
   html += "<label>WiFi Password<input type='password' name='wifi_pw' placeholder='(unchanged if empty)' autocomplete='new-password'/></label></div>";
@@ -772,7 +1287,11 @@ String dashboardHtml(bool authenticated) {
   html += "<label>L2<input name='name_l2' value='" + htmlEscape(gConfig.sensorL2) + "'/></label></div>";
   html += "<div class='grid'><label>L3<input name='name_l3' value='" + htmlEscape(gConfig.sensorL3) + "'/></label>";
   html += "<label>Temperature<input name='name_t' value='" + htmlEscape(gConfig.sensorTemp) + "'/></label></div>";
-  html += "<label>Humidity<input name='name_h' value='" + htmlEscape(gConfig.sensorHumidity) + "'/></label>";
+  html += "<div class='grid'><label>Humidity<input name='name_h' value='" + htmlEscape(gConfig.sensorHumidity) + "'/></label>";
+  html += "<label>Energy Total<input name='name_e_tot' value='" + htmlEscape(gConfig.sensorEnergyTotal) + "'/></label></div>";
+  html += "<div class='grid'><label>Energy Today<input name='name_e_day' value='" + htmlEscape(gConfig.sensorEnergyToday) + "'/></label>";
+  html += "<label>Energy Season<input name='name_e_sea' value='" + htmlEscape(gConfig.sensorEnergySeason) + "'/></label></div>";
+  html += "<label>Energy Last Season<input name='name_e_lst' value='" + htmlEscape(gConfig.sensorEnergyLastSeason) + "'/></label>";
 
   html += "<h3>Timezone</h3>";
   html += "<div class='grid'><label>NTP Server<input name='ntp_srv' value='" + htmlEscape(gConfig.ntpServer) + "'/></label>";
@@ -782,7 +1301,43 @@ String dashboardHtml(bool authenticated) {
   html += "<div class='grid'><label>Temperature Offset (C)<input name='temp_off' type='number' step='0.1' min='-20' max='20' value='" + String(gConfig.tempOffsetC, 1) + "'/></label>";
   html += "<label>Humidity Offset (%)<input name='hum_off' type='number' step='0.1' min='-50' max='50' value='" + String(gConfig.humidityOffsetPct, 1) + "'/></label></div>";
 
-  html += "<button type='submit'>Save Configuration</button></form></article></section>";
+  html += "<h3>Current Calibration";
+  if (savedScope == "config") {
+    html += " <small style='color:var(--pico-color-green-500);'>saved</small>";
+  }
+  html += "</h3>";
+  if (gainRecalibrationRecommended) {
+    html += "<p><small style='color:var(--pico-color-amber-500);'>Gain changed: run Zero Calibration with empty CT clamps for accurate low-current values.</small></p>";
+  }
+  html += "<div class='grid'><label>L1 Gain (A/Vrms)<input name='gain_l1' type='number' step='0.001' min='0.05' max='5' value='" + String(gConfig.gainL1, 3) + "'/></label>";
+  html += "<label>L2 Gain (A/Vrms)<input name='gain_l2' type='number' step='0.001' min='0.05' max='5' value='" + String(gConfig.gainL2, 3) + "'/></label></div>";
+  html += "<label>L3 Gain (A/Vrms)<input name='gain_l3' type='number' step='0.001' min='0.05' max='5' value='" + String(gConfig.gainL3, 3) + "'/></label>";
+
+  html += "<button type='submit' name='save_scope' value='config'>Save Configuration</button></article></section>";
+
+  html += "<section><h2>Home Assistant</h2><article>";
+  html += "<h3>Discovery";
+  if (savedScope == "ha") {
+    html += " <small style='color:var(--pico-color-green-500);'>saved</small>";
+  }
+  html += "</h3>";
+  html += "<label><input type='checkbox' name='ha_enabled' role='switch'";
+  if (gConfig.haEnabled) {
+    html += " checked";
+  }
+  html += "/>Enable MQTT Auto-Discovery</label>";
+  html += "<div class='grid'><label>L1 Name<input name='ha_l1' value='" + htmlEscape(gConfig.haNameL1) + "'/></label>";
+  html += "<label>L2 Name<input name='ha_l2' value='" + htmlEscape(gConfig.haNameL2) + "'/></label></div>";
+  html += "<div class='grid'><label>L3 Name<input name='ha_l3' value='" + htmlEscape(gConfig.haNameL3) + "'/></label>";
+  html += "<label>Total Name<input name='ha_tot' value='" + htmlEscape(gConfig.haNameTotal) + "'/></label></div>";
+  html += "<div class='grid'><label>Temperature Name<input name='ha_tmp' value='" + htmlEscape(gConfig.haNameTemp) + "'/></label>";
+  html += "<label>Humidity Name<input name='ha_hum' value='" + htmlEscape(gConfig.haNameHumidity) + "'/></label></div>";
+  html += "<div class='grid'><label>Energy Total Name<input name='ha_e_tot' value='" + htmlEscape(gConfig.haNameEnergyTotal) + "'/></label>";
+  html += "<label>Energy Today Name<input name='ha_e_day' value='" + htmlEscape(gConfig.haNameEnergyToday) + "'/></label></div>";
+  html += "<div class='grid'><label>Energy Season Name<input name='ha_e_sea' value='" + htmlEscape(gConfig.haNameEnergySeason) + "'/></label>";
+  html += "<label>Energy Last Season Name<input name='ha_e_lst' value='" + htmlEscape(gConfig.haNameEnergyLastSeason) + "'/></label></div>";
+  html += "<button type='submit' name='save_scope' value='ha'>Save Home Assistant Configuration</button></article></section>";
+  html += "</form>";
 
   html += "<section><h2>Security</h2><article><form method='post' action='/change-admin-user'>";
   html += "<div class='grid'><label>Current Password<input type='password' name='current_pw_user'/></label>";
@@ -805,6 +1360,20 @@ String dashboardHtml(bool authenticated) {
 
   html += "<section><article><form method='post' action='/logout'><button type='submit' class='secondary'>Logout</button></form></article></section>";
 
+  html += "<script>";
+  html += "const X42_REBOOT_REQUIRED=" + String(rebootRequired ? "true" : "false") + ";";
+  html += "const fmt=(n,d,u)=>typeof n==='number'?n.toFixed(d)+' '+u:'--';";
+  html += "const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};";
+  html += "async function refreshLive(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)return;const j=await r.json();";
+  html += "setVal('val-l1-current',fmt(j.currents?.L1,3,'A'));setVal('val-l2-current',fmt(j.currents?.L2,3,'A'));setVal('val-l3-current',fmt(j.currents?.L3,3,'A'));setVal('val-total-current',fmt(j.currents?.total,3,'A'));";
+  html += "setVal('val-l1-power',fmt(j.power_w?.L1,1,'W'));setVal('val-l2-power',fmt(j.power_w?.L2,1,'W'));setVal('val-l3-power',fmt(j.power_w?.L3,1,'W'));setVal('val-total-power',fmt(j.power_w?.total,1,'W'));";
+  html += "setVal('val-energy-total',fmt(j.energy_kwh?.total,3,'kWh'));setVal('val-energy-today',fmt(j.energy_kwh?.today,3,'kWh'));setVal('val-energy-season',fmt(j.energy_kwh?.season,3,'kWh'));setVal('val-energy-last-season',fmt(j.energy_kwh?.last_season,3,'kWh'));";
+  html += "if(j.climate?.fresh){setVal('val-temp',fmt(j.climate?.temperature_c,1,'C'));setVal('val-humidity',fmt(j.climate?.humidity_percent,1,'%'));}else{setVal('val-temp','waiting/stale');setVal('val-humidity','waiting/stale');}";
+  html += "}catch(e){}}";
+  html += "refreshLive();setInterval(refreshLive,5000);";
+  html += "if(X42_REBOOT_REQUIRED){alert('WiFi/Hostname changed. Reboot is required to apply network identity changes.');}";
+  html += "if(" + String(gainRecalibrationRecommended ? "true" : "false") + "){alert('Gain changed. Please run Zero Calibration with empty CT clamps to restore accuracy.');}";
+  html += "</script>";
   html += "</main></body></html>";
   return html;
 }
@@ -828,7 +1397,10 @@ String loginHtml(const String& message) {
 }
 
 void handleRoot() {
-  gServer.send(200, "text/html", dashboardHtml(isAuthenticated()));
+  const String savedScope = gServer.hasArg("saved") ? gServer.arg("saved") : String();
+  const bool rebootRequired = gServer.hasArg("reboot") && gServer.arg("reboot") == "1";
+  const bool gainRecalibrationRecommended = gServer.hasArg("gain") && gServer.arg("gain") == "1";
+  gServer.send(200, "text/html", dashboardHtml(isAuthenticated(), savedScope, rebootRequired, gainRecalibrationRecommended));
 }
 
 void handleLogin() {
@@ -885,6 +1457,13 @@ void handleSaveConfig() {
     return;
   }
 
+  const String saveScope = gServer.hasArg("save_scope") ? gServer.arg("save_scope") : String("config");
+  const String oldWifiSsid = String(gConfig.wifiSsid);
+  const String oldHostname = String(gConfig.hostname);
+  const float oldGainL1 = gConfig.gainL1;
+  const float oldGainL2 = gConfig.gainL2;
+  const float oldGainL3 = gConfig.gainL3;
+
   copyString(gConfig.wifiSsid, sizeof(gConfig.wifiSsid), readArg("wifi_ssid"));
   const String wifiPwArg = readArg("wifi_pw");
   if (wifiPwArg.length() > 0) {
@@ -904,6 +1483,21 @@ void handleSaveConfig() {
   copyString(gConfig.sensorL3, sizeof(gConfig.sensorL3), readArg("name_l3"));
   copyString(gConfig.sensorTemp, sizeof(gConfig.sensorTemp), readArg("name_t"));
   copyString(gConfig.sensorHumidity, sizeof(gConfig.sensorHumidity), readArg("name_h"));
+  copyString(gConfig.sensorEnergyTotal, sizeof(gConfig.sensorEnergyTotal), readArg("name_e_tot"));
+  copyString(gConfig.sensorEnergyToday, sizeof(gConfig.sensorEnergyToday), readArg("name_e_day"));
+  copyString(gConfig.sensorEnergySeason, sizeof(gConfig.sensorEnergySeason), readArg("name_e_sea"));
+  copyString(gConfig.sensorEnergyLastSeason, sizeof(gConfig.sensorEnergyLastSeason), readArg("name_e_lst"));
+  gConfig.haEnabled = gServer.hasArg("ha_enabled");
+  copyString(gConfig.haNameL1, sizeof(gConfig.haNameL1), readArg("ha_l1"));
+  copyString(gConfig.haNameL2, sizeof(gConfig.haNameL2), readArg("ha_l2"));
+  copyString(gConfig.haNameL3, sizeof(gConfig.haNameL3), readArg("ha_l3"));
+  copyString(gConfig.haNameTotal, sizeof(gConfig.haNameTotal), readArg("ha_tot"));
+  copyString(gConfig.haNameTemp, sizeof(gConfig.haNameTemp), readArg("ha_tmp"));
+  copyString(gConfig.haNameHumidity, sizeof(gConfig.haNameHumidity), readArg("ha_hum"));
+  copyString(gConfig.haNameEnergyTotal, sizeof(gConfig.haNameEnergyTotal), readArg("ha_e_tot"));
+  copyString(gConfig.haNameEnergyToday, sizeof(gConfig.haNameEnergyToday), readArg("ha_e_day"));
+  copyString(gConfig.haNameEnergySeason, sizeof(gConfig.haNameEnergySeason), readArg("ha_e_sea"));
+  copyString(gConfig.haNameEnergyLastSeason, sizeof(gConfig.haNameEnergyLastSeason), readArg("ha_e_lst"));
 
   const int mqttPort = readArg("mqtt_port").toInt();
   gConfig.mqttPort = mqttPort > 0 ? static_cast<uint16_t>(mqttPort) : 1883;
@@ -935,6 +1529,12 @@ void handleSaveConfig() {
   }
   gConfig.humidityOffsetPct = humidityOffset;
 
+  gConfig.gainL1 = sanitizeGain(readArg("gain_l1").toFloat(), gConfig.gainL1);
+  gConfig.gainL2 = sanitizeGain(readArg("gain_l2").toFloat(), gConfig.gainL2);
+  gConfig.gainL3 = sanitizeGain(readArg("gain_l3").toFloat(), gConfig.gainL3);
+  const bool gainChanged = fabsf(gConfig.gainL1 - oldGainL1) > 0.0005F || fabsf(gConfig.gainL2 - oldGainL2) > 0.0005F || fabsf(gConfig.gainL3 - oldGainL3) > 0.0005F;
+  applyConfiguredCurrentGains();
+
   int publishInterval = readArg("pub_int").toInt();
   if (publishInterval < 1) {
     publishInterval = 1;
@@ -949,7 +1549,33 @@ void handleSaveConfig() {
   gMqtt.disconnect();
   syncTimeFromNtp();
 
-  gServer.send(200, "text/plain", "Configuration saved. Use reboot action to apply WiFi/hostname changes.");
+  const bool rebootRequired = oldWifiSsid != String(gConfig.wifiSsid) || oldHostname != String(gConfig.hostname);
+  String location = "/?saved=" + saveScope;
+  if (rebootRequired) {
+    location += "&reboot=1";
+  }
+  if (gainChanged) {
+    location += "&gain=1";
+  }
+  gServer.sendHeader("Location", location);
+  gServer.send(303, "text/plain", "Saved");
+}
+
+void handleEnergySeasonReset() {
+  if (!isAuthenticated()) {
+    requireAuthOrReject();
+    return;
+  }
+
+  const String confirm = readArg("confirm");
+  if (confirm != "YES") {
+    gServer.send(400, "text/plain", "Season reset aborted. Type YES to confirm.");
+    return;
+  }
+
+  resetSeasonEnergy();
+  gServer.sendHeader("Location", "/?saved=energy");
+  gServer.send(303, "text/plain", "Season reset done");
 }
 
 void handleChangePassword() {
@@ -998,7 +1624,22 @@ void handleStatusJson() {
   json += "\"L1\":" + String(gRuntime.phases[0].currentA, 3) + ",";
   json += "\"L2\":" + String(gRuntime.phases[1].currentA, 3) + ",";
   json += "\"L3\":" + String(gRuntime.phases[2].currentA, 3) + ",";
-  json += "\"total\":" + String(gRuntime.totalCurrentA, 3);
+  json += "\"total\":" + String(gRuntime.totalCurrentA, 3) + ",";
+  json += "\"gain_l1\":" + String(gConfig.gainL1, 3) + ",";
+  json += "\"gain_l2\":" + String(gConfig.gainL2, 3) + ",";
+  json += "\"gain_l3\":" + String(gConfig.gainL3, 3);
+  json += "},";
+  json += "\"power_w\":{";
+  json += "\"L1\":" + String(gRuntime.phases[0].powerW, 1) + ",";
+  json += "\"L2\":" + String(gRuntime.phases[1].powerW, 1) + ",";
+  json += "\"L3\":" + String(gRuntime.phases[2].powerW, 1) + ",";
+  json += "\"total\":" + String(gRuntime.totalPowerW, 1);
+  json += "},";
+  json += "\"energy_kwh\":{";
+  json += "\"total\":" + String(gEnergy.totalKWh, 3) + ",";
+  json += "\"today\":" + String(gEnergy.todayKWh, 3) + ",";
+  json += "\"season\":" + String(gEnergy.seasonKWh, 3) + ",";
+  json += "\"last_season\":" + String(gEnergy.lastSeasonKWh, 3);
   json += "},";
   json += "\"climate\":{";
   if (climateSampleIsFresh()) {
@@ -1059,6 +1700,7 @@ void configureWebServer() {
   gServer.on("/save-config", HTTP_POST, handleSaveConfig);
   gServer.on("/change-admin-user", HTTP_POST, handleChangeAdminUser);
   gServer.on("/change-password", HTTP_POST, handleChangePassword);
+  gServer.on("/energy-season-reset", HTTP_POST, handleEnergySeasonReset);
   gServer.on("/status.json", HTTP_GET, handleStatusJson);
   gServer.on("/run-zero", HTTP_POST, handleRunZero);
   gServer.on("/reboot", HTTP_POST, handleReboot);
@@ -1108,10 +1750,23 @@ void connectWifi() {
   if (strlen(gConfig.wifiSsid) == 0) {
     gIsApMode = true;
   } else {
-    Serial.printf("Connecting to WiFi SSID: %s\n", gConfig.wifiSsid);
-    WiFi.begin(gConfig.wifiSsid, gConfig.wifiPassword);
-    const uint32_t start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < kWifiConnectTimeoutMs) {
+    Serial.printf(
+        "Connecting to WiFi SSID: %s (startup retry window %lu s)\n",
+        gConfig.wifiSsid,
+        static_cast<unsigned long>(kStartupWifiConnectWindowMs / 1000UL));
+    const uint32_t startupStartMs = millis();
+    uint32_t attemptStartMs = 0;
+
+    while (WiFi.status() != WL_CONNECTED && millis() - startupStartMs < kStartupWifiConnectWindowMs) {
+      const uint32_t now = millis();
+      if (attemptStartMs == 0 || now - attemptStartMs >= kWifiRetryAttemptTimeoutMs) {
+        WiFi.disconnect(false, false);
+        WiFi.mode(WIFI_STA);
+        WiFi.setHostname(gConfig.hostname);
+        WiFi.begin(gConfig.wifiSsid, gConfig.wifiPassword);
+        attemptStartMs = now;
+        Serial.print("\nStartup WiFi retry...");
+      }
       delay(300);
       Serial.print('.');
     }
@@ -1124,9 +1779,55 @@ void connectWifi() {
     String apSsid = String(gConfig.hostname) + "-setup";
     WiFi.softAP(apSsid.c_str());
     Serial.printf("AP mode active, SSID: %s, IP: %s\n", apSsid.c_str(), WiFi.softAPIP().toString().c_str());
+    gWifiRetryInProgress = false;
+    gLastWifiRetryAttemptMs = millis();
   } else {
     Serial.printf("WiFi connected, IP: %s\n", WiFi.localIP().toString().c_str());
+    gWifiRetryInProgress = false;
     syncTimeFromNtp();
+  }
+}
+
+void maintainWifiFallbackRetry() {
+  if (!gIsApMode || strlen(gConfig.wifiSsid) == 0) {
+    return;
+  }
+
+  const uint32_t now = millis();
+
+  if (!gWifiRetryInProgress) {
+    if (now - gLastWifiRetryAttemptMs < kWifiRetryIntervalMs) {
+      return;
+    }
+
+    gLastWifiRetryAttemptMs = now;
+    gWifiRetryStartedMs = now;
+    gWifiRetryInProgress = true;
+
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.setHostname(gConfig.hostname);
+    WiFi.begin(gConfig.wifiSsid, gConfig.wifiPassword);
+    Serial.printf("AP fallback: retrying WiFi SSID %s in background\n", gConfig.wifiSsid);
+    return;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    gWifiRetryInProgress = false;
+    gIsApMode = false;
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_STA);
+    Serial.printf("WiFi fallback recovery successful, IP: %s\n", WiFi.localIP().toString().c_str());
+    syncTimeFromNtp();
+    return;
+  }
+
+  if (now - gWifiRetryStartedMs >= kWifiRetryAttemptTimeoutMs) {
+    gWifiRetryInProgress = false;
+    WiFi.disconnect(false, false);
+    WiFi.mode(WIFI_AP);
+    String apSsid = String(gConfig.hostname) + "-setup";
+    WiFi.softAP(apSsid.c_str());
+    Serial.println("AP fallback: retry timed out, hotspot remains active.");
   }
 }
 
@@ -1168,6 +1869,12 @@ void setup() {
     Serial.println("Using built-in zero calibration defaults.");
   }
 
+  loadEnergyState();
+  if (gEnergy.localDayKey < 0 && hasValidSystemTime()) {
+    gEnergy.localDayKey = localDayKeyFromEpoch(time(nullptr));
+    saveEnergyState();
+  }
+
   gDht.begin();
   connectWifi();
   configureMqttClient();
@@ -1179,10 +1886,12 @@ void setup() {
 
   gRuntime.lastReportMs = millis();
   gLastMqttPublishMs = millis();
+  gEnergy.lastPersistMs = millis();
 }
 
 void loop() {
   handleSerialCommands();
+  maintainWifiFallbackRetry();
   gServer.handleClient();
   ArduinoOTA.handle();
 

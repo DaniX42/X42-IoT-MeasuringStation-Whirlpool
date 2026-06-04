@@ -32,5 +32,9 @@
 #define X42_CFG_SENSOR_L3 "current_l3"
 #define X42_CFG_SENSOR_TEMP "temp_outdoor"
 #define X42_CFG_SENSOR_HUMIDITY "humidity_outdoor"
+#define X42_CFG_SENSOR_ENERGY_TOTAL "energy_total_kwh"
+#define X42_CFG_SENSOR_ENERGY_TODAY "energy_today_kwh"
+#define X42_CFG_SENSOR_ENERGY_SEASON "energy_season_kwh"
+#define X42_CFG_SENSOR_ENERGY_LAST_SEASON "energy_last_season_kwh"
 
 #endif

@@ -69,12 +69,15 @@ and edit values there (admin user/password, Wi-Fi, MQTT, hostname, NTP/timezone,
 - Temperature and humidity monitoring in the maintenance shaft using a DHT11 sensor.
 - Runtime serial telemetry for electrical and climate data.
 - Embedded web server with password-protected configuration for Wi-Fi, MQTT, hostname, MQTT sensor names, and publish interval.
+- Resilient Wi-Fi behavior with startup retry window and automatic AP fallback.
+- AP fallback keeps the hotspot online while retrying the configured SSID in the background every 2 minutes.
 - Time synchronization via configurable NTP server and timezone offset.
 - Optional MQTT time synchronization command support (`cmd/time` or `cmd` with `time=<epoch>`).
 - Admin user and password change via web interface.
 - HTTP status endpoint (`/status.json`) exposing measurements in JSON.
 - OTA firmware update via browser upload and Arduino OTA support.
 - MQTT telemetry publishing for all currently integrated sensors.
+- Current channels calibrated and validated against a 60W incandescent reference load.
 
 ## Web Configuration Example
 
@@ -104,4 +107,4 @@ This section provides operational actions such as zero calibration, reboot, OTA 
 
 ## Status
 
-Initial workspace baseline prepared and ready for implementation.
+Core runtime is operational on ESP32 with web UI, MQTT, OTA, resilient Wi-Fi fallback, and validated three-phase current calibration.

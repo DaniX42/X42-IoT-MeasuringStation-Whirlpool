@@ -93,6 +93,36 @@ This aligns all three channels to the same live conductor. A future reference-me
 	- `L2`: about `0.260 A` to `0.263 A`
 	- `L3`: about `0.261 A` initially, with occasional rise toward `0.274 A`
 
+## Final 60W Recalibration (Current Baseline)
+
+- Reference load: `60 W` incandescent lamp on each phase clamp.
+- Assumed mains voltage: `230 V`
+- Expected current per phase: about `0.261 A`
+- Averaged pre-recalibration currents:
+	- `L1`: about `0.253 A`
+	- `L2`: about `0.527 A`
+	- `L3`: about `0.287 A`
+- Updated gain values:
+	- `L1 ampsPerVolt = 0.802`
+	- `L2 ampsPerVolt = 0.385`
+	- `L3 ampsPerVolt = 0.786`
+- Verified post-recalibration readings:
+	- `L1`: about `59.6 W`
+	- `L2`: about `59.9 W`
+	- `L3`: about `60.5 W`
+
+## Post-Recalibration Zero Check
+
+- Zero calibration rerun with all clamps empty.
+- Saved zero offsets:
+	- `L1`: `0.005 A`
+	- `L2`: `0.002 A`
+	- `L3`: `0.004 A`
+- Verified no-load readings after save:
+	- `L1`: `0.000 A`
+	- `L2`: `0.000 A`
+	- `L3`: `0.000 A`
+
 ## Validation Tips
 
 - Use only ADC1 pins for stable readings while WiFi is active.

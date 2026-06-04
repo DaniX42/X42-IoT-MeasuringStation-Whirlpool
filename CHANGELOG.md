@@ -20,6 +20,8 @@ The format is inspired by Keep a Changelog and follows semantic release-style ca
 - HTTP status endpoint returning JSON telemetry.
 - OTA update support through browser upload and Arduino OTA.
 - MQTT telemetry publishing for integrated sensors.
+- Startup Wi-Fi strategy with a 30-second connect retry window before switching to AP fallback.
+- AP fallback background reconnect attempts to configured Wi-Fi every 2 minutes.
 
 ### Changed
 - RMS measurement logic now removes DC offset per sample window for more stable baseline readings.
@@ -29,6 +31,8 @@ The format is inspired by Keep a Changelog and follows semantic release-style ca
 - All three current conversion factors were fine-tuned against a 60W incandescent reference load.
 - Channel labels were renamed from CH1/CH2/CH3 to L1/L2/L3 for three-phase readability.
 - Wi-Fi, MQTT, hostname, sensor topic names, and publish interval are now runtime-configurable via web UI.
+- Three-phase current gain values were recalibrated using 60W incandescent reference loads on all phases.
+- Post-calibration zero-offset baseline was refreshed and persisted with empty clamps.
 
 ### Fixed
 - N/A
