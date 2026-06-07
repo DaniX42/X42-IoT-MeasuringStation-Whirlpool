@@ -2,6 +2,7 @@
 #include <ArduinoOTA.h>
 #include <DallasTemperature.h>
 #include <DHT.h>
+#include <LiquidCrystal_I2C.h>
 #include <OneWire.h>
 #include <Preferences.h>
 #include <PubSubClient.h>
@@ -300,6 +301,11 @@ constexpr uint8_t kRj45RadarTxPin = 17;
 constexpr uint8_t kRj45RadarRxPin = 16;
 constexpr uint8_t kRj45SclPin = 22;
 constexpr uint8_t kRj45SdaPin = 21;
+constexpr uint8_t kLcdI2cAddress = 0x27;
+constexpr uint8_t kLcdAltI2cAddress = 0x3F;
+constexpr uint8_t kLcdColumns = 16;
+constexpr uint8_t kLcdRows = 2;
+constexpr uint32_t kLcdInitRetryIntervalMs = 10000;
 constexpr uint8_t kRj45Ds18b20Pin = 27;
 constexpr uint32_t kRadarSerialBaudRate = 256000;
 constexpr float kAdcReferenceVoltage = 3.3F;
@@ -451,6 +457,7 @@ DHT gShaftDht(kShaftDhtPin, kShaftDhtType);
 DHT gOutdoorDht(kOutdoorDhtPin, kOutdoorDhtType);
 OneWire gOneWire(kRj45Ds18b20Pin);
 DallasTemperature gDs18b20(&gOneWire);
+LiquidCrystal_I2C* gLcd = nullptr;
 Preferences gPreferences;
 WebServer gServer(kHttpPort);
 WiFiClient gWifiClient;
@@ -466,6 +473,9 @@ bool gWifiRetryInProgress = false;
 uint32_t gWifiRetryStartedMs = 0;
 String gLastTimeSyncSource;
 time_t gLastTimeSyncEpoch = 0;
+bool gLcdReady = false;
+uint8_t gLcdDetectedAddress = 0;
+uint32_t gLastLcdInitAttemptMs = 0;
 }
 
 void copyString(char* dst, size_t dstSize, const String& value) {
@@ -1170,6 +1180,76 @@ void initializeRj45Sensors() {
 
   pinMode(kRj45Ds18b20Pin, INPUT_PULLUP);
   refreshDs18b20Detection(true);
+}
+
+void printCenteredLcdLine(uint8_t row, const char* text) {
+  if (!gLcdReady || gLcd == nullptr || row >= kLcdRows || text == nullptr) {
+    return;
+  }
+
+  const size_t length = strlen(text);
+  const size_t visibleLength = length > kLcdColumns ? kLcdColumns : length;
+  const uint8_t leftPadding = static_cast<uint8_t>((kLcdColumns - visibleLength) / 2);
+
+  gLcd->setCursor(0, row);
+  gLcd->print("                ");
+  gLcd->setCursor(leftPadding, row);
+  for (size_t i = 0; i < visibleLength; ++i) {
+    gLcd->print(text[i]);
+  }
+}
+
+bool i2cDevicePresent(uint8_t address) {
+  Wire.beginTransmission(address);
+  return Wire.endTransmission() == 0;
+}
+
+uint8_t detectLcdI2cAddress() {
+  if (i2cDevicePresent(kLcdI2cAddress)) {
+    return kLcdI2cAddress;
+  }
+  if (i2cDevicePresent(kLcdAltI2cAddress)) {
+    return kLcdAltI2cAddress;
+  }
+  return 0;
+}
+
+void initializeLcd1602() {
+  gLastLcdInitAttemptMs = millis();
+  gLcdDetectedAddress = detectLcdI2cAddress();
+  if (gLcdDetectedAddress == 0) {
+    Serial.printf("LCD1602 not found on I2C (tried 0x%02X and 0x%02X)\n", kLcdI2cAddress, kLcdAltI2cAddress);
+    return;
+  }
+
+  if (gLcd == nullptr || gLcdDetectedAddress != kLcdI2cAddress) {
+    if (gLcd != nullptr) {
+      delete gLcd;
+      gLcd = nullptr;
+    }
+    gLcd = new LiquidCrystal_I2C(gLcdDetectedAddress, kLcdColumns, kLcdRows);
+  }
+
+  gLcd->init();
+  gLcd->backlight();
+  gLcdReady = true;
+
+  gLcd->clear();
+  printCenteredLcdLine(0, "X42Measuring");
+  printCenteredLcdLine(1, "Station");
+  Serial.printf("LCD1602 initialized at 0x%02X and startup text rendered.\n", gLcdDetectedAddress);
+}
+
+void maintainLcdInitialization() {
+  if (gLcdReady) {
+    return;
+  }
+
+  const uint32_t now = millis();
+  if (now - gLastLcdInitAttemptMs < kLcdInitRetryIntervalMs) {
+    return;
+  }
+  initializeLcd1602();
 }
 
 void updateRj45Measurements() {
@@ -2427,6 +2507,7 @@ void setup() {
   gShaftDht.begin();
   gOutdoorDht.begin();
   initializeRj45Sensors();
+  initializeLcd1602();
   printRadarStartupPresence();
   connectWifi();
   configureMqttClient();
@@ -2442,6 +2523,7 @@ void setup() {
 }
 
 void loop() {
+  maintainLcdInitialization();
   handleSerialCommands();
   pollRadarPresence();
   maintainWifiFallbackRetry();
