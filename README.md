@@ -15,7 +15,8 @@ At project completion, the station is intended to provide:
 - Water pH monitoring.
 - Outdoor air temperature and humidity monitoring near the maintenance shaft.
 - Daylight brightness monitoring.
-- A local display showing date, time, pH value, and water temperature.
+- Presence detection via HLK-LD2410C radar.
+- Runtime status via web UI, JSON endpoint, MQTT, and serial monitor.
 
 The system is designed to be integrated into the local network over Wi-Fi and publish measurements through MQTT.
 Additional device functions should be triggerable over MQTT, including calibration workflows for pH, current, and other sensors.
@@ -56,7 +57,30 @@ Planned platform-level capabilities include:
 
 The default firmware prints startup telemetry and chip information.
 For three-phase current sensing, the firmware labels channels as `L1`, `L2`, and `L3` on GPIO34, GPIO35, and GPIO32.
-The firmware also reads a DHT11 sensor on GPIO4 for maintenance shaft temperature and humidity.
+The firmware reads a DHT11 sensor on GPIO4 for maintenance shaft temperature and humidity, a second DHT11 on GPIO25 for outdoor temperature and humidity, a DS18B20 on GPIO27 for water temperature, and an HLK-LD2410C radar sensor on GPIO17/16 for presence detection.
+
+## GPIO and RJ45 Mapping
+
+| Signal | GPIO | RJ45 Pin | Wire Color |
+| --- | ---: | --- | --- |
+| L1 current (SCT013) | 34 | - | - |
+| L2 current (SCT013) | 35 | - | - |
+| L3 current (SCT013) | 32 | - | - |
+| DHT11 maintenance shaft | 4 | - | - |
+| 5V supply | - | 1 | Red |
+| pH sensor analog signal | 33 | 2 | Green |
+| Outdoor DHT11 data | 25 | 3 | White |
+| Radar sensor TX | 17 | 4 | Light Blue |
+| Radar sensor RX | 16 | 5 | Light Green |
+| I2C SCL | 22 | 6 | Yellow |
+| I2C SDA | 21 | 7 | Light Green |
+| DS18B20 water temperature (OneWire) | 27 | 8 | Pink |
+| Ground (shield) | - | SH | Black |
+
+Notes:
+
+- `-` in `RJ45 Pin` means the signal is currently not mapped through the RJ45 breakout.
+- `GPIO39` is ADC input-only and commonly labeled `VN`; it is no longer used for the outdoor sensor.
 
 For mass deployment with per-batch defaults, copy `src/device_config.example.h` to `src/device_config.h`
 and edit values there (admin user/password, Wi-Fi, MQTT, hostname, NTP/timezone, sensor names, publish interval).
@@ -67,6 +91,9 @@ and edit values there (admin user/password, Wi-Fi, MQTT, hostname, NTP/timezone,
 - Three-phase current monitoring (`L1`, `L2`, `L3`) with SCT013 sensors.
 - Persisted zero-current calibration with manual refresh command (`z`) via serial monitor.
 - Temperature and humidity monitoring in the maintenance shaft using a DHT11 sensor.
+- Outdoor temperature and humidity monitoring using a DHT11 sensor on GPIO25.
+- Water temperature monitoring using a DS18B20 sensor on GPIO27.
+- HLK-LD2410C radar presence detection on Serial2 with live `True` / `False` status.
 - Runtime serial telemetry for electrical and climate data.
 - Embedded web server with password-protected configuration for Wi-Fi, MQTT, hostname, MQTT sensor names, and publish interval.
 - Resilient Wi-Fi behavior with startup retry window and automatic AP fallback.

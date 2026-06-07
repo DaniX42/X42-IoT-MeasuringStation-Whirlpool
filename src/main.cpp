@@ -1,11 +1,14 @@
 #include <Arduino.h>
 #include <ArduinoOTA.h>
+#include <DallasTemperature.h>
 #include <DHT.h>
+#include <OneWire.h>
 #include <Preferences.h>
 #include <PubSubClient.h>
 #include <Update.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <Wire.h>
 #include <esp_system.h>
 #include <math.h>
 #include <sys/time.h>
@@ -23,6 +26,110 @@
 
 #ifndef X42_CFG_HUMIDITY_OFFSET_PCT
 #define X42_CFG_HUMIDITY_OFFSET_PCT 0.0F
+#endif
+
+#ifndef X42_CFG_ADMIN_USER
+#define X42_CFG_ADMIN_USER "admin"
+#endif
+
+#ifndef X42_CFG_ADMIN_PASSWORD
+#define X42_CFG_ADMIN_PASSWORD "admin1234"
+#endif
+
+#ifndef X42_CFG_WIFI_SSID
+#define X42_CFG_WIFI_SSID ""
+#endif
+
+#ifndef X42_CFG_WIFI_PASSWORD
+#define X42_CFG_WIFI_PASSWORD ""
+#endif
+
+#ifndef X42_CFG_HOSTNAME
+#define X42_CFG_HOSTNAME "x42-whirlpool-station"
+#endif
+
+#ifndef X42_CFG_MQTT_SERVER
+#define X42_CFG_MQTT_SERVER ""
+#endif
+
+#ifndef X42_CFG_MQTT_PORT
+#define X42_CFG_MQTT_PORT 1883
+#endif
+
+#ifndef X42_CFG_MQTT_USER
+#define X42_CFG_MQTT_USER ""
+#endif
+
+#ifndef X42_CFG_MQTT_PASSWORD
+#define X42_CFG_MQTT_PASSWORD ""
+#endif
+
+#ifndef X42_CFG_MQTT_BASE_TOPIC
+#define X42_CFG_MQTT_BASE_TOPIC "whirlpool/station"
+#endif
+
+#ifndef X42_CFG_NTP_SERVER
+#define X42_CFG_NTP_SERVER "pool.ntp.org"
+#endif
+
+#ifndef X42_CFG_TZ_OFFSET_MIN
+#define X42_CFG_TZ_OFFSET_MIN 60
+#endif
+
+#ifndef X42_CFG_APPLY_ON_USB_FLASH
+#define X42_CFG_APPLY_ON_USB_FLASH 1
+#endif
+
+#ifndef X42_CFG_APPLY_ON_OTA_FLASH
+#define X42_CFG_APPLY_ON_OTA_FLASH 1
+#endif
+
+#ifndef X42_CFG_PUBLISH_INTERVAL_SEC
+#define X42_CFG_PUBLISH_INTERVAL_SEC 5
+#endif
+
+#ifndef X42_CFG_SENSOR_L1
+#define X42_CFG_SENSOR_L1 "current_l1"
+#endif
+
+#ifndef X42_CFG_SENSOR_L2
+#define X42_CFG_SENSOR_L2 "current_l2"
+#endif
+
+#ifndef X42_CFG_SENSOR_L3
+#define X42_CFG_SENSOR_L3 "current_l3"
+#endif
+
+#ifndef X42_CFG_SENSOR_TEMP
+#define X42_CFG_SENSOR_TEMP "temp_outdoor"
+#endif
+
+#ifndef X42_CFG_SENSOR_HUMIDITY
+#define X42_CFG_SENSOR_HUMIDITY "humidity_outdoor"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_TOTAL
+#define X42_CFG_SENSOR_ENERGY_TOTAL "energy_total_kwh"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_TODAY
+#define X42_CFG_SENSOR_ENERGY_TODAY "energy_today_kwh"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_SEASON
+#define X42_CFG_SENSOR_ENERGY_SEASON "energy_season_kwh"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_LAST_SEASON
+#define X42_CFG_SENSOR_ENERGY_LAST_SEASON "energy_last_season_kwh"
+#endif
+
+#ifndef X42_CFG_PH_NEUTRAL_VOLTAGE
+#define X42_CFG_PH_NEUTRAL_VOLTAGE 2.50F
+#endif
+
+#ifndef X42_CFG_PH_SLOPE_PER_VOLT
+#define X42_CFG_PH_SLOPE_PER_VOLT 3.00F
 #endif
 
 #ifndef X42_GITHUB_RELEASE
@@ -105,6 +212,66 @@
 #define X42_CFG_GAIN_L3 0.863F
 #endif
 
+#ifndef X42_CFG_HA_NAME_L3
+#define X42_CFG_HA_NAME_L3 "L3 Current"
+#endif
+
+#ifndef X42_CFG_HA_NAME_TOTAL
+#define X42_CFG_HA_NAME_TOTAL "Total Current"
+#endif
+
+#ifndef X42_CFG_HA_NAME_TEMP
+#define X42_CFG_HA_NAME_TEMP "Temperature"
+#endif
+
+#ifndef X42_CFG_HA_NAME_HUMIDITY
+#define X42_CFG_HA_NAME_HUMIDITY "Humidity"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_TOTAL
+#define X42_CFG_SENSOR_ENERGY_TOTAL "energy_total_kwh"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_TODAY
+#define X42_CFG_SENSOR_ENERGY_TODAY "energy_today_kwh"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_SEASON
+#define X42_CFG_SENSOR_ENERGY_SEASON "energy_season_kwh"
+#endif
+
+#ifndef X42_CFG_SENSOR_ENERGY_LAST_SEASON
+#define X42_CFG_SENSOR_ENERGY_LAST_SEASON "energy_last_season_kwh"
+#endif
+
+#ifndef X42_CFG_HA_NAME_ENERGY_TOTAL
+#define X42_CFG_HA_NAME_ENERGY_TOTAL "Total Energy"
+#endif
+
+#ifndef X42_CFG_HA_NAME_ENERGY_TODAY
+#define X42_CFG_HA_NAME_ENERGY_TODAY "Current Today"
+#endif
+
+#ifndef X42_CFG_HA_NAME_ENERGY_SEASON
+#define X42_CFG_HA_NAME_ENERGY_SEASON "Energy This Season"
+#endif
+
+#ifndef X42_CFG_HA_NAME_ENERGY_LAST_SEASON
+#define X42_CFG_HA_NAME_ENERGY_LAST_SEASON "Energy Last Season"
+#endif
+
+#ifndef X42_CFG_GAIN_L1
+#define X42_CFG_GAIN_L1 0.778F
+#endif
+
+#ifndef X42_CFG_GAIN_L2
+#define X42_CFG_GAIN_L2 0.778F
+#endif
+
+#ifndef X42_CFG_GAIN_L3
+#define X42_CFG_GAIN_L3 0.863F
+#endif
+
 namespace {
 constexpr uint32_t kBaudRate = 115200;
 constexpr uint32_t kSamplingWindowMs = 400;
@@ -117,12 +284,24 @@ constexpr uint32_t kSessionLifetimeMs = 15UL * 60UL * 1000UL;
 constexpr uint32_t kStartupWifiConnectWindowMs = 30000;
 constexpr uint32_t kWifiRetryIntervalMs = 2UL * 60UL * 1000UL;
 constexpr uint32_t kWifiRetryAttemptTimeoutMs = 10000;
+constexpr uint32_t kRj45ReadIntervalMs = 5000;
+constexpr uint32_t kDs18b20DiscoveryIntervalMs = 15000;
+constexpr uint32_t kRadarPresenceStaleAfterMs = 10000;
 constexpr uint32_t kNtpSyncTimeoutMs = 8000;
 constexpr uint32_t kEnergyPersistIntervalMs = 60000;
 constexpr uint32_t kMaxEnergyDeltaMs = 10UL * 60UL * 1000UL;
 constexpr uint16_t kHttpPort = 80;
-constexpr uint8_t kDhtPin = 4;
-constexpr uint8_t kDhtType = DHT11;
+constexpr uint8_t kShaftDhtPin = 4;
+constexpr uint8_t kShaftDhtType = DHT11;
+constexpr uint8_t kOutdoorDhtPin = 25;
+constexpr uint8_t kOutdoorDhtType = DHT11;
+constexpr uint8_t kRj45PhAnalogPin = 33;
+constexpr uint8_t kRj45RadarTxPin = 17;
+constexpr uint8_t kRj45RadarRxPin = 16;
+constexpr uint8_t kRj45SclPin = 22;
+constexpr uint8_t kRj45SdaPin = 21;
+constexpr uint8_t kRj45Ds18b20Pin = 27;
+constexpr uint32_t kRadarSerialBaudRate = 256000;
 constexpr float kAdcReferenceVoltage = 3.3F;
 constexpr float kNominalVoltageV = 230.0F;
 constexpr uint16_t kAdcMax = 4095;
@@ -222,6 +401,24 @@ struct ClimateState {
   uint32_t lastSuccessMs;
 };
 
+struct Rj45State {
+  uint16_t phRaw;
+  float phVoltage;
+  bool i2cReady;
+  bool radarSerialReady;
+  bool radarFrameSeen;
+  bool radarPresenceFresh;
+  bool radarPersonDetected;
+  uint8_t radarTargetState;
+  bool ds18b20Detected;
+  bool ds18b20Fresh;
+  float ds18b20TempC;
+  uint32_t lastReadMs;
+  uint32_t lastRadarFrameMs;
+  uint32_t lastRadarMotionDetectedMs;
+  uint32_t lastDs18b20DiscoveryMs;
+};
+
 struct RuntimeState {
   PhaseRuntime phases[sizeof(gChannels) / sizeof(gChannels[0])];
   float totalCurrentA;
@@ -243,10 +440,17 @@ struct EnergyState {
 float gZeroOffsetVrms[sizeof(gChannels) / sizeof(gChannels[0])] = {};
 DeviceConfig gConfig = {};
 RuntimeState gRuntime = {};
-ClimateState gClimate = {false, 0.0F, 0.0F, 0, 0};
+ClimateState gShaftClimate = {false, 0.0F, 0.0F, 0, 0};
+ClimateState gOutdoorClimate = {false, 0.0F, 0.0F, 0, 0};
+Rj45State gRj45 = {0, 0.0F, false, false, false, false, false, 0, false, false, NAN, 0, 0, 0, 0};
+uint8_t gRadarFrameBuffer[96] = {0};
+size_t gRadarFrameBufferLen = 0;
 EnergyState gEnergy = {0.0F, 0.0F, 0.0F, 0.0F, -1, 0, 0, false};
 
-DHT gDht(kDhtPin, kDhtType);
+DHT gShaftDht(kShaftDhtPin, kShaftDhtType);
+DHT gOutdoorDht(kOutdoorDhtPin, kOutdoorDhtType);
+OneWire gOneWire(kRj45Ds18b20Pin);
+DallasTemperature gDs18b20(&gOneWire);
 Preferences gPreferences;
 WebServer gServer(kHttpPort);
 WiFiClient gWifiClient;
@@ -371,8 +575,20 @@ ConfigBootAction loadConfig(bool pendingOtaUpdate) {
   gPreferences.getString("admin_usr", gConfig.adminUser, sizeof(gConfig.adminUser));
   gPreferences.getString("admin_pw", gConfig.adminPassword, sizeof(gConfig.adminPassword));
   gPreferences.getString("wifi_ssid", gConfig.wifiSsid, sizeof(gConfig.wifiSsid));
+  bool persistLoadedDefaults = false;
+  if (strlen(gConfig.wifiSsid) == 0) {
+    copyString(gConfig.wifiSsid, sizeof(gConfig.wifiSsid), X42_CFG_WIFI_SSID);
+    persistLoadedDefaults = true;
+  }
   gPreferences.getString("wifi_pw", gConfig.wifiPassword, sizeof(gConfig.wifiPassword));
+  if (strlen(gConfig.wifiPassword) == 0) {
+    copyString(gConfig.wifiPassword, sizeof(gConfig.wifiPassword), X42_CFG_WIFI_PASSWORD);
+    persistLoadedDefaults = true;
+  }
   gPreferences.getString("host", gConfig.hostname, sizeof(gConfig.hostname));
+  if (strlen(gConfig.hostname) == 0) {
+    copyString(gConfig.hostname, sizeof(gConfig.hostname), X42_CFG_HOSTNAME);
+  }
   gPreferences.getString("mqtt_srv", gConfig.mqttServer, sizeof(gConfig.mqttServer));
   gConfig.mqttPort = gPreferences.getUShort("mqtt_port", gConfig.mqttPort);
   gPreferences.getString("mqtt_usr", gConfig.mqttUser, sizeof(gConfig.mqttUser));
@@ -435,6 +651,11 @@ ConfigBootAction loadConfig(bool pendingOtaUpdate) {
   }
 
   applyConfiguredCurrentGains();
+
+  if (persistLoadedDefaults) {
+    gPreferences.end();
+    return ConfigBootAction::PersistDefaults;
+  }
 
   if (!revisionMatches) {
     return ConfigBootAction::PersistLoaded;
@@ -676,6 +897,14 @@ void printChipInfo() {
   Serial.printf("Revision: %u\n", chipInfo.revision);
   Serial.printf("Flash size: %u MB\n", ESP.getFlashChipSize() / (1024 * 1024));
   Serial.printf("CPU frequency: %u MHz\n", ESP.getCpuFreqMHz());
+  Serial.println("RJ45 breakout pin mapping prepared:");
+  Serial.printf("  pH analog -> GPIO%u\n", kRj45PhAnalogPin);
+  Serial.printf("  outdoor DHT11 data -> GPIO%u\n", kOutdoorDhtPin);
+  Serial.printf("  radar TX -> GPIO%u\n", kRj45RadarTxPin);
+  Serial.printf("  radar RX -> GPIO%u\n", kRj45RadarRxPin);
+  Serial.printf("  I2C SCL -> GPIO%u\n", kRj45SclPin);
+  Serial.printf("  I2C SDA -> GPIO%u\n", kRj45SdaPin);
+  Serial.printf("  DS18B20 OneWire -> GPIO%u\n", kRj45Ds18b20Pin);
   Serial.println("=====================");
 }
 
@@ -760,21 +989,21 @@ void runZeroCalibration(bool persist) {
   Serial.println("========================");
 }
 
-void updateClimateMeasurement() {
+void updateClimateMeasurement(ClimateState& climate, DHT& sensor) {
   const uint32_t now = millis();
-  if (now - gClimate.lastReadMs < kClimateReadIntervalMs) {
+  if (now - climate.lastReadMs < kClimateReadIntervalMs) {
     return;
   }
 
-  gClimate.lastReadMs = now;
-  const float humidity = gDht.readHumidity();
-  const float temperatureC = gDht.readTemperature();
+  climate.lastReadMs = now;
+  const float humidity = sensor.readHumidity();
+  const float temperatureC = sensor.readTemperature();
 
   if (isnan(humidity) || isnan(temperatureC)) {
     return;
   }
 
-  gClimate.hasValidSample = true;
+  climate.hasValidSample = true;
   float correctedHumidity = humidity + gConfig.humidityOffsetPct;
   if (correctedHumidity < 0.0F) {
     correctedHumidity = 0.0F;
@@ -783,13 +1012,192 @@ void updateClimateMeasurement() {
     correctedHumidity = 100.0F;
   }
 
-  gClimate.humidityPercent = correctedHumidity;
-  gClimate.temperatureC = temperatureC + gConfig.tempOffsetC;
-  gClimate.lastSuccessMs = now;
+  climate.humidityPercent = correctedHumidity;
+  climate.temperatureC = temperatureC + gConfig.tempOffsetC;
+  climate.lastSuccessMs = now;
 }
 
-bool climateSampleIsFresh() {
-  return gClimate.hasValidSample && (millis() - gClimate.lastSuccessMs <= kClimateStaleAfterMs);
+const char* radarPresenceText(bool personDetected) {
+  return personDetected ? "True" : "False";
+}
+
+String radarDetectedAgoText(uint32_t ageSeconds) {
+  if (ageSeconds <= 59U) {
+    return String(ageSeconds) + " sec. ago";
+  }
+  const uint32_t ageMinutes = ageSeconds / 60U;
+  return String(ageMinutes) + " min. ago";
+}
+
+void consumeRadarPayload(const uint8_t* payload, size_t payloadLen) {
+  if (payloadLen < 3) {
+    return;
+  }
+
+  if (payload[0] != 0x02 || payload[1] != 0xAA) {
+    return;
+  }
+
+  const uint8_t targetState = payload[2];
+  const bool personDetected = targetState != 0;
+  const bool wasDetected = gRj45.radarPersonDetected;
+  const bool hadFrameBefore = gRj45.radarFrameSeen;
+  const uint32_t now = millis();
+  gRj45.radarFrameSeen = true;
+  gRj45.radarPresenceFresh = true;
+  gRj45.radarPersonDetected = personDetected;
+  gRj45.radarTargetState = targetState;
+  gRj45.lastRadarFrameMs = now;
+
+  // Track last motion event on rising edge to avoid resetting timer on each radar frame.
+  if (personDetected && (!hadFrameBefore || !wasDetected)) {
+    gRj45.lastRadarMotionDetectedMs = now;
+  }
+}
+
+void processRadarUartByte(uint8_t byteValue) {
+  if (gRadarFrameBufferLen >= sizeof(gRadarFrameBuffer)) {
+    gRadarFrameBufferLen = 0;
+  }
+  gRadarFrameBuffer[gRadarFrameBufferLen++] = byteValue;
+
+  const uint8_t kHeader[4] = {0xF4, 0xF3, 0xF2, 0xF1};
+  const uint8_t kTail[4] = {0xF8, 0xF7, 0xF6, 0xF5};
+
+  while (gRadarFrameBufferLen >= 10) {
+    size_t frameStart = 0;
+    while (frameStart + 3 < gRadarFrameBufferLen) {
+      if (gRadarFrameBuffer[frameStart] == kHeader[0] &&
+          gRadarFrameBuffer[frameStart + 1] == kHeader[1] &&
+          gRadarFrameBuffer[frameStart + 2] == kHeader[2] &&
+          gRadarFrameBuffer[frameStart + 3] == kHeader[3]) {
+        break;
+      }
+      ++frameStart;
+    }
+
+    if (frameStart > 0) {
+      memmove(gRadarFrameBuffer, gRadarFrameBuffer + frameStart, gRadarFrameBufferLen - frameStart);
+      gRadarFrameBufferLen -= frameStart;
+    }
+
+    if (gRadarFrameBufferLen < 10) {
+      return;
+    }
+
+    const size_t payloadLen = static_cast<size_t>(gRadarFrameBuffer[4]) | (static_cast<size_t>(gRadarFrameBuffer[5]) << 8U);
+    if (payloadLen > 64) {
+      memmove(gRadarFrameBuffer, gRadarFrameBuffer + 1, gRadarFrameBufferLen - 1);
+      --gRadarFrameBufferLen;
+      continue;
+    }
+
+    const size_t frameLen = 4 + 2 + payloadLen + 4;
+    if (gRadarFrameBufferLen < frameLen) {
+      return;
+    }
+
+    const size_t tailIndex = frameLen - 4;
+    if (!(gRadarFrameBuffer[tailIndex] == kTail[0] &&
+          gRadarFrameBuffer[tailIndex + 1] == kTail[1] &&
+          gRadarFrameBuffer[tailIndex + 2] == kTail[2] &&
+          gRadarFrameBuffer[tailIndex + 3] == kTail[3])) {
+      memmove(gRadarFrameBuffer, gRadarFrameBuffer + 1, gRadarFrameBufferLen - 1);
+      --gRadarFrameBufferLen;
+      continue;
+    }
+
+    consumeRadarPayload(gRadarFrameBuffer + 6, payloadLen);
+    memmove(gRadarFrameBuffer, gRadarFrameBuffer + frameLen, gRadarFrameBufferLen - frameLen);
+    gRadarFrameBufferLen -= frameLen;
+  }
+}
+
+void pollRadarPresence() {
+  while (Serial2.available() > 0) {
+    processRadarUartByte(static_cast<uint8_t>(Serial2.read()));
+  }
+
+  if (gRj45.radarPresenceFresh && millis() - gRj45.lastRadarFrameMs > kRadarPresenceStaleAfterMs) {
+    gRj45.radarPresenceFresh = false;
+  }
+}
+
+void printRadarStartupPresence() {
+  if (!gRj45.radarSerialReady) {
+    Serial.println("HLK-LD2410C startup: UART not ready");
+    return;
+  }
+
+  const uint32_t startMs = millis();
+  while (millis() - startMs < 2000) {
+    pollRadarPresence();
+    delay(20);
+  }
+
+  if (gRj45.radarFrameSeen) {
+    Serial.printf("HLK-LD2410C startup: %s\n", radarPresenceText(gRj45.radarPersonDetected));
+  } else {
+    Serial.println("HLK-LD2410C startup: no person detected (no valid frame yet)");
+  }
+}
+
+void refreshDs18b20Detection(bool force) {
+  const uint32_t now = millis();
+  if (!force && (now - gRj45.lastDs18b20DiscoveryMs < kDs18b20DiscoveryIntervalMs)) {
+    return;
+  }
+  gRj45.lastDs18b20DiscoveryMs = now;
+
+  const bool wasDetected = gRj45.ds18b20Detected;
+  gDs18b20.begin();
+  gRj45.ds18b20Detected = gDs18b20.getDeviceCount() > 0;
+
+  if (gRj45.ds18b20Detected != wasDetected) {
+    Serial.printf(
+        "DS18B20 on GPIO%u: %s\n",
+        kRj45Ds18b20Pin,
+        gRj45.ds18b20Detected ? "detected" : "not detected");
+  }
+}
+
+void initializeRj45Sensors() {
+  Wire.begin(kRj45SdaPin, kRj45SclPin);
+  gRj45.i2cReady = true;
+
+  Serial2.begin(kRadarSerialBaudRate, SERIAL_8N1, kRj45RadarRxPin, kRj45RadarTxPin);
+  gRj45.radarSerialReady = true;
+
+  pinMode(kRj45Ds18b20Pin, INPUT_PULLUP);
+  refreshDs18b20Detection(true);
+}
+
+void updateRj45Measurements() {
+  const uint32_t now = millis();
+  if (now - gRj45.lastReadMs < kRj45ReadIntervalMs) {
+    return;
+  }
+  gRj45.lastReadMs = now;
+
+  gRj45.phRaw = analogRead(kRj45PhAnalogPin);
+  gRj45.phVoltage = (static_cast<float>(gRj45.phRaw) * kAdcReferenceVoltage) / static_cast<float>(kAdcMax);
+
+  pollRadarPresence();
+
+  refreshDs18b20Detection(false);
+  gRj45.ds18b20Fresh = false;
+  if (gRj45.ds18b20Detected) {
+    gDs18b20.requestTemperatures();
+    const float dsTempC = gDs18b20.getTempCByIndex(0);
+    if (dsTempC != DEVICE_DISCONNECTED_C) {
+      gRj45.ds18b20TempC = dsTempC;
+      gRj45.ds18b20Fresh = true;
+    }
+  }
+}
+
+bool climateSampleIsFresh(const ClimateState& climate) {
+  return climate.hasValidSample && (millis() - climate.lastSuccessMs <= kClimateStaleAfterMs);
 }
 
 void updateMeasurements() {
@@ -805,7 +1213,9 @@ void updateMeasurements() {
     gRuntime.totalPowerW += estimatedPowerW;
   }
   integrateEnergy(gRuntime.totalPowerW);
-  updateClimateMeasurement();
+  updateClimateMeasurement(gShaftClimate, gShaftDht);
+  updateClimateMeasurement(gOutdoorClimate, gOutdoorDht);
+  updateRj45Measurements();
 }
 
 String readArg(const char* key) {
@@ -1002,9 +1412,21 @@ void publishMqttMeasurements() {
   publishFloat(topicFor(gConfig.sensorEnergySeason), gEnergy.seasonKWh, 3);
   publishFloat(topicFor(gConfig.sensorEnergyLastSeason), gEnergy.lastSeasonKWh, 3);
 
-  if (climateSampleIsFresh()) {
-    publishFloat(topicFor(gConfig.sensorTemp), gClimate.temperatureC, 1);
-    publishFloat(topicFor(gConfig.sensorHumidity), gClimate.humidityPercent, 1);
+  if (climateSampleIsFresh(gOutdoorClimate)) {
+    publishFloat(topicFor(gConfig.sensorTemp), gOutdoorClimate.temperatureC, 1);
+    publishFloat(topicFor(gConfig.sensorHumidity), gOutdoorClimate.humidityPercent, 1);
+  } else if (climateSampleIsFresh(gShaftClimate)) {
+    publishFloat(topicFor(gConfig.sensorTemp), gShaftClimate.temperatureC, 1);
+    publishFloat(topicFor(gConfig.sensorHumidity), gShaftClimate.humidityPercent, 1);
+  }
+
+  publishFloat(topicFor("rj45/ph_voltage"), gRj45.phVoltage, 3);
+  if (climateSampleIsFresh(gOutdoorClimate)) {
+    publishFloat(topicFor("rj45/outdoor_temp_c"), gOutdoorClimate.temperatureC, 1);
+    publishFloat(topicFor("rj45/outdoor_humidity_percent"), gOutdoorClimate.humidityPercent, 1);
+  }
+  if (gRj45.ds18b20Fresh) {
+    publishFloat(topicFor("rj45/water_temp_c"), gRj45.ds18b20TempC, 2);
   }
 
   if (hasValidSystemTime()) {
@@ -1126,14 +1548,54 @@ void printSerialReport() {
   Serial.println("==============================");
 
   Serial.println("=== Maintenance Shaft Climate ===");
-  if (climateSampleIsFresh()) {
-    Serial.printf("DHT11 GPIO%u: temperature=%.1f C, humidity=%.1f %%\n", kDhtPin, gClimate.temperatureC, gClimate.humidityPercent);
-  } else if (gClimate.hasValidSample) {
-    Serial.printf("DHT11 GPIO%u: stale sample age=%lu ms\n", kDhtPin, millis() - gClimate.lastSuccessMs);
+  if (climateSampleIsFresh(gShaftClimate)) {
+    Serial.printf(
+        "DHT11 GPIO%u: temperature=%.1f C, humidity=%.1f %%\n",
+        kShaftDhtPin,
+        gShaftClimate.temperatureC,
+        gShaftClimate.humidityPercent);
+  } else if (gShaftClimate.hasValidSample) {
+    Serial.printf("DHT11 GPIO%u: stale sample age=%lu ms\n", kShaftDhtPin, millis() - gShaftClimate.lastSuccessMs);
   } else {
-    Serial.printf("DHT11 GPIO%u: waiting for first valid sample\n", kDhtPin);
+    Serial.printf("DHT11 GPIO%u: waiting for first valid sample\n", kShaftDhtPin);
   }
   Serial.println("=================================");
+
+  Serial.println("=== Outdoor Climate (RJ45) ===");
+  if (climateSampleIsFresh(gOutdoorClimate)) {
+    Serial.printf(
+        "DHT11 GPIO%u: temperature=%.1f C, humidity=%.1f %%\n",
+        kOutdoorDhtPin,
+        gOutdoorClimate.temperatureC,
+        gOutdoorClimate.humidityPercent);
+  } else if (gOutdoorClimate.hasValidSample) {
+    Serial.printf("DHT11 GPIO%u: stale sample age=%lu ms\n", kOutdoorDhtPin, millis() - gOutdoorClimate.lastSuccessMs);
+  } else {
+    Serial.printf("DHT11 GPIO%u: waiting for first valid sample\n", kOutdoorDhtPin);
+  }
+  Serial.println("================================");
+
+  Serial.println("=== RJ45 Sensor Breakout ===");
+  Serial.printf("pH analog GPIO%u: raw=%u, voltage=%.3f V\n", kRj45PhAnalogPin, gRj45.phRaw, gRj45.phVoltage);
+  if (gRj45.ds18b20Fresh) {
+    Serial.printf("DS18B20 GPIO%u: %.2f C\n", kRj45Ds18b20Pin, gRj45.ds18b20TempC);
+  } else if (gRj45.ds18b20Detected) {
+    Serial.printf("DS18B20 GPIO%u: waiting for valid sample\n", kRj45Ds18b20Pin);
+  } else {
+    Serial.printf("DS18B20 GPIO%u: no sensor detected\n", kRj45Ds18b20Pin);
+  }
+  Serial.printf("I2C ready=%s (SCL GPIO%u, SDA GPIO%u)\n", gRj45.i2cReady ? "true" : "false", kRj45SclPin, kRj45SdaPin);
+  Serial.printf(
+      "Radar UART ready=%s (TX GPIO%u, RX GPIO%u, baud=%lu)\n",
+      gRj45.radarSerialReady ? "true" : "false",
+      kRj45RadarTxPin,
+      kRj45RadarRxPin,
+      static_cast<unsigned long>(kRadarSerialBaudRate));
+  Serial.printf(
+      "HLK-LD2410C presence: %s%s\n",
+      radarPresenceText(gRj45.radarPersonDetected),
+      gRj45.radarPresenceFresh ? "" : " (no fresh frame)");
+  Serial.println("============================");
 }
 
 String htmlEscape(const String& value) {
@@ -1230,12 +1692,33 @@ String dashboardHtml(bool authenticated, const String& savedScope, bool rebootRe
   html += "<article class='x42-card'><h3>Total Power</h3><div class='x42-value' id='val-total-power'>" + String(gRuntime.totalPowerW, 1) + " W</div></article>";
   html += "<article class='x42-card'><h3>Total Energy</h3><div class='x42-value' id='val-energy-total'>" + String(gEnergy.totalKWh, 3) + " kWh</div></article>";
   html += "<article class='x42-card'><h3>Current Today</h3><div class='x42-value' id='val-energy-today'>" + String(gEnergy.todayKWh, 3) + " kWh</div></article>";
-  if (climateSampleIsFresh()) {
-    html += "<article class='x42-card'><h3>Temperature</h3><div class='x42-value' id='val-temp'>" + String(gClimate.temperatureC, 1) + " C</div></article>";
-    html += "<article class='x42-card'><h3>Humidity</h3><div class='x42-value' id='val-humidity'>" + String(gClimate.humidityPercent, 1) + " %</div></article>";
+  html += "<article class='x42-card'><h3>pH Analog Voltage</h3><div class='x42-value' id='val-rj45-ph-voltage'>" + String(gRj45.phVoltage, 3) + " V</div></article>";
+  const uint32_t radarAgeSec = gRj45.lastRadarMotionDetectedMs == 0 ? 0U : (millis() - gRj45.lastRadarMotionDetectedMs) / 1000U;
+  String radarLabel = radarPresenceText(gRj45.radarPersonDetected);
+  if (gRj45.lastRadarMotionDetectedMs > 0) {
+    radarLabel += " (" + radarDetectedAgoText(radarAgeSec) + ")";
   } else {
-    html += "<article class='x42-card'><h3>Temperature</h3><div class='x42-value' id='val-temp'>waiting/stale</div></article>";
-    html += "<article class='x42-card'><h3>Humidity</h3><div class='x42-value' id='val-humidity'>waiting/stale</div></article>";
+    radarLabel += " (never)";
+  }
+  html += "<article class='x42-card'><h3>Radar Presence</h3><div class='x42-value' id='val-rj45-radar-presence'>" + radarLabel + "</div></article>";
+  if (climateSampleIsFresh(gOutdoorClimate)) {
+    html += "<article class='x42-card'><h3>Outdoor Temperature</h3><div class='x42-value' id='val-outdoor-temp'>" + String(gOutdoorClimate.temperatureC, 1) + " C</div></article>";
+    html += "<article class='x42-card'><h3>Outdoor Humidity</h3><div class='x42-value' id='val-outdoor-humidity'>" + String(gOutdoorClimate.humidityPercent, 1) + " %</div></article>";
+  } else {
+    html += "<article class='x42-card'><h3>Outdoor Temperature</h3><div class='x42-value' id='val-outdoor-temp'>waiting/stale</div></article>";
+    html += "<article class='x42-card'><h3>Outdoor Humidity</h3><div class='x42-value' id='val-outdoor-humidity'>waiting/stale</div></article>";
+  }
+  if (gRj45.ds18b20Fresh) {
+    html += "<article class='x42-card'><h3>Water Temperature (DS18B20)</h3><div class='x42-value' id='val-rj45-water-temp'>" + String(gRj45.ds18b20TempC, 2) + " C</div></article>";
+  } else {
+    html += "<article class='x42-card'><h3>Water Temperature (DS18B20)</h3><div class='x42-value' id='val-rj45-water-temp'>waiting/sensor</div></article>";
+  }
+  if (climateSampleIsFresh(gShaftClimate)) {
+    html += "<article class='x42-card'><h3>Shaft Temperature</h3><div class='x42-value' id='val-shaft-temp'>" + String(gShaftClimate.temperatureC, 1) + " C</div></article>";
+    html += "<article class='x42-card'><h3>Shaft Humidity</h3><div class='x42-value' id='val-shaft-humidity'>" + String(gShaftClimate.humidityPercent, 1) + " %</div></article>";
+  } else {
+    html += "<article class='x42-card'><h3>Shaft Temperature</h3><div class='x42-value' id='val-shaft-temp'>waiting/stale</div></article>";
+    html += "<article class='x42-card'><h3>Shaft Humidity</h3><div class='x42-value' id='val-shaft-humidity'>waiting/stale</div></article>";
   }
   html += "</div></section>";
 
@@ -1363,12 +1846,17 @@ String dashboardHtml(bool authenticated, const String& savedScope, bool rebootRe
   html += "<script>";
   html += "const X42_REBOOT_REQUIRED=" + String(rebootRequired ? "true" : "false") + ";";
   html += "const fmt=(n,d,u)=>typeof n==='number'?n.toFixed(d)+' '+u:'--';";
+  html += "const radarAgo=(s)=>{if(typeof s!=='number'||s<0)return 'never';const secs=Math.floor(s);if(secs<=59)return secs+' sec. ago';const mins=Math.floor(secs/60);return mins+' min. ago';};";
   html += "const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};";
   html += "async function refreshLive(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)return;const j=await r.json();";
   html += "setVal('val-l1-current',fmt(j.currents?.L1,3,'A'));setVal('val-l2-current',fmt(j.currents?.L2,3,'A'));setVal('val-l3-current',fmt(j.currents?.L3,3,'A'));setVal('val-total-current',fmt(j.currents?.total,3,'A'));";
   html += "setVal('val-l1-power',fmt(j.power_w?.L1,1,'W'));setVal('val-l2-power',fmt(j.power_w?.L2,1,'W'));setVal('val-l3-power',fmt(j.power_w?.L3,1,'W'));setVal('val-total-power',fmt(j.power_w?.total,1,'W'));";
   html += "setVal('val-energy-total',fmt(j.energy_kwh?.total,3,'kWh'));setVal('val-energy-today',fmt(j.energy_kwh?.today,3,'kWh'));setVal('val-energy-season',fmt(j.energy_kwh?.season,3,'kWh'));setVal('val-energy-last-season',fmt(j.energy_kwh?.last_season,3,'kWh'));";
-  html += "if(j.climate?.fresh){setVal('val-temp',fmt(j.climate?.temperature_c,1,'C'));setVal('val-humidity',fmt(j.climate?.humidity_percent,1,'%'));}else{setVal('val-temp','waiting/stale');setVal('val-humidity','waiting/stale');}";
+  html += "setVal('val-rj45-ph-voltage',fmt(j.rj45?.ph_voltage,3,'V'));";
+  html += "{const state=j.rj45?.radar_person_detected?'True':'False';const age=radarAgo(j.rj45?.radar_last_detected_ago_s);setVal('val-rj45-radar-presence',state+' ('+age+')');}";
+  html += "if(j.climate_outdoor?.fresh){setVal('val-outdoor-temp',fmt(j.climate_outdoor?.temperature_c,1,'C'));setVal('val-outdoor-humidity',fmt(j.climate_outdoor?.humidity_percent,1,'%'));}else{setVal('val-outdoor-temp','waiting/stale');setVal('val-outdoor-humidity','waiting/stale');}";
+  html += "if(j.climate_shaft?.fresh){setVal('val-shaft-temp',fmt(j.climate_shaft?.temperature_c,1,'C'));setVal('val-shaft-humidity',fmt(j.climate_shaft?.humidity_percent,1,'%'));}else{setVal('val-shaft-temp','waiting/stale');setVal('val-shaft-humidity','waiting/stale');}";
+  html += "if(j.rj45?.ds18b20_fresh){setVal('val-rj45-water-temp',fmt(j.rj45?.ds18b20_temp_c,2,'C'));}else{setVal('val-rj45-water-temp','waiting/sensor');}";
   html += "}catch(e){}}";
   html += "refreshLive();setInterval(refreshLive,5000);";
   html += "if(X42_REBOOT_REQUIRED){alert('WiFi/Hostname changed. Reboot is required to apply network identity changes.');}";
@@ -1642,15 +2130,70 @@ void handleStatusJson() {
   json += "\"last_season\":" + String(gEnergy.lastSeasonKWh, 3);
   json += "},";
   json += "\"climate\":{";
-  if (climateSampleIsFresh()) {
-    json += "\"temperature_c\":" + String(gClimate.temperatureC, 1) + ",";
-    json += "\"humidity_percent\":" + String(gClimate.humidityPercent, 1) + ",";
+  if (climateSampleIsFresh(gOutdoorClimate)) {
+    json += "\"temperature_c\":" + String(gOutdoorClimate.temperatureC, 1) + ",";
+    json += "\"humidity_percent\":" + String(gOutdoorClimate.humidityPercent, 1) + ",";
+    json += "\"source\":\"outdoor\",";
+    json += "\"temperature_offset_c\":" + String(gConfig.tempOffsetC, 1) + ",";
+    json += "\"humidity_offset_percent\":" + String(gConfig.humidityOffsetPct, 1) + ",";
+    json += "\"fresh\":true";
+  } else if (climateSampleIsFresh(gShaftClimate)) {
+    json += "\"temperature_c\":" + String(gShaftClimate.temperatureC, 1) + ",";
+    json += "\"humidity_percent\":" + String(gShaftClimate.humidityPercent, 1) + ",";
+    json += "\"source\":\"shaft\",";
     json += "\"temperature_offset_c\":" + String(gConfig.tempOffsetC, 1) + ",";
     json += "\"humidity_offset_percent\":" + String(gConfig.humidityOffsetPct, 1) + ",";
     json += "\"fresh\":true";
   } else {
     json += "\"fresh\":false";
   }
+  json += "},";
+  json += "\"climate_outdoor\":{";
+  if (climateSampleIsFresh(gOutdoorClimate)) {
+    json += "\"temperature_c\":" + String(gOutdoorClimate.temperatureC, 1) + ",";
+    json += "\"humidity_percent\":" + String(gOutdoorClimate.humidityPercent, 1) + ",";
+    json += "\"fresh\":true";
+  } else {
+    json += "\"fresh\":false";
+  }
+  json += "},";
+  json += "\"climate_shaft\":{";
+  if (climateSampleIsFresh(gShaftClimate)) {
+    json += "\"temperature_c\":" + String(gShaftClimate.temperatureC, 1) + ",";
+    json += "\"humidity_percent\":" + String(gShaftClimate.humidityPercent, 1) + ",";
+    json += "\"fresh\":true";
+  } else {
+    json += "\"fresh\":false";
+  }
+  json += "},";
+  json += "\"rj45\":{";
+  json += "\"pins\":{";
+  json += "\"ph_analog\":" + String(kRj45PhAnalogPin) + ",";
+  json += "\"outdoor_dht_data\":" + String(kOutdoorDhtPin) + ",";
+  json += "\"radar_tx\":" + String(kRj45RadarTxPin) + ",";
+  json += "\"radar_rx\":" + String(kRj45RadarRxPin) + ",";
+  json += "\"scl\":" + String(kRj45SclPin) + ",";
+  json += "\"sda\":" + String(kRj45SdaPin) + ",";
+  json += "\"ds18b20\":" + String(kRj45Ds18b20Pin);
+  json += "},";
+  json += "\"ph_raw\":" + String(gRj45.phRaw) + ",";
+  json += "\"ph_voltage\":" + String(gRj45.phVoltage, 3) + ",";
+  json += "\"i2c_ready\":" + String(gRj45.i2cReady ? "true" : "false") + ",";
+  json += "\"radar_uart_ready\":" + String(gRj45.radarSerialReady ? "true" : "false") + ",";
+  json += "\"radar_presence_fresh\":" + String(gRj45.radarPresenceFresh ? "true" : "false") + ",";
+  json += "\"radar_person_detected\":" + String(gRj45.radarPersonDetected ? "true" : "false") + ",";
+  json += "\"radar_target_state\":" + String(gRj45.radarTargetState) + ",";
+  if (gRj45.lastRadarMotionDetectedMs > 0) {
+    json += "\"radar_last_detected_ago_s\":" + String((millis() - gRj45.lastRadarMotionDetectedMs) / 1000U) + ",";
+  } else {
+    json += "\"radar_last_detected_ago_s\":-1,";
+  }
+  json += "\"outdoor_dht_fresh\":" + String(climateSampleIsFresh(gOutdoorClimate) ? "true" : "false") + ",";
+  json += "\"outdoor_temp_c\":" + String(gOutdoorClimate.temperatureC, 1) + ",";
+  json += "\"outdoor_humidity_percent\":" + String(gOutdoorClimate.humidityPercent, 1) + ",";
+  json += "\"ds18b20_detected\":" + String(gRj45.ds18b20Detected ? "true" : "false") + ",";
+  json += "\"ds18b20_fresh\":" + String(gRj45.ds18b20Fresh ? "true" : "false") + ",";
+  json += "\"ds18b20_temp_c\":" + String(gRj45.ds18b20TempC, 2);
   json += "}";
   json += "}";
   gServer.send(200, "application/json", json);
@@ -1746,8 +2289,10 @@ void configureArduinoOta() {
 void connectWifi() {
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(gConfig.hostname);
+  Serial.printf("WiFi config: ssid='%s' (len=%u)\n", gConfig.wifiSsid, static_cast<unsigned>(strlen(gConfig.wifiSsid)));
 
   if (strlen(gConfig.wifiSsid) == 0) {
+    Serial.println("No WiFi SSID configured; entering AP fallback immediately.");
     gIsApMode = true;
   } else {
     Serial.printf(
@@ -1772,6 +2317,9 @@ void connectWifi() {
     }
     Serial.println();
     gIsApMode = WiFi.status() != WL_CONNECTED;
+    if (gIsApMode) {
+      Serial.printf("WiFi join failed, status=%d\n", static_cast<int>(WiFi.status()));
+    }
   }
 
   if (gIsApMode) {
@@ -1861,6 +2409,7 @@ void setup() {
   for (const CurrentChannel& channel : gChannels) {
     analogSetPinAttenuation(channel.pin, ADC_11db);
   }
+  analogSetPinAttenuation(kRj45PhAnalogPin, ADC_11db);
 
   loadDefaultZeroCalibration();
   if (loadPersistedZeroCalibration()) {
@@ -1875,7 +2424,10 @@ void setup() {
     saveEnergyState();
   }
 
-  gDht.begin();
+  gShaftDht.begin();
+  gOutdoorDht.begin();
+  initializeRj45Sensors();
+  printRadarStartupPresence();
   connectWifi();
   configureMqttClient();
   configureWebServer();
@@ -1891,6 +2443,7 @@ void setup() {
 
 void loop() {
   handleSerialCommands();
+  pollRadarPresence();
   maintainWifiFallbackRetry();
   gServer.handleClient();
   ArduinoOTA.handle();
